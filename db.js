@@ -206,3 +206,27 @@ for (const [k, v] of Object.entries(DEFAULT_SETTINGS)) db.prepare('INSERT OR IGN
 db.getSetting = (k) => db.prepare('SELECT value FROM settings WHERE key = ?').get(k)?.value ?? DEFAULT_SETTINGS[k];
 db.setSetting = (k, v) => db.prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value').run(k, String(v));
 module.exports = db;
+// v6 : alertes SMS / WhatsApp pour les nouveaux messages
+addCol('users', 'notify_channel', "TEXT NOT NULL DEFAULT 'sms'"); // sms | whatsapp | none
+addCol('users', 'quiet_hours', 'INTEGER NOT NULL DEFAULT 1');      // pas d'alerte 22 h – 7 h (heure de Brazzaville)
+db.exec(`
+CREATE TABLE IF NOT EXISTS alerts (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,   -- destinataire
+  conversation_id INTEGER NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+  sender_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  channel TEXT,                    -- sms | whatsapp (au moment de l'envoi)
+  provider TEXT,                   -- dev | twilio | meta | …
+  to_phone TEXT,
+  body TEXT,                       -- texte de l'alerte (jamais le contenu du message)
+  link TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'queued', -- queued | sending | sent | failed | skipped
+  reason TEXT,                     -- motif (report, non-envoi) ou erreur fournisseur
+  due_at INTEGER NOT NULL,
+  created_at INTEGER NOT NULL,
+  sent_at INTEGER
+);
+CREATE INDEX IF NOT EXISTS idx_alerts_due ON alerts(status, due_at);
+CREATE INDEX IF NOT EXISTS idx_alerts_user ON alerts(user_id, status, sent_at);
+CREATE INDEX IF NOT EXISTS idx_alerts_conv ON alerts(user_id, conversation_id, status);
+`);

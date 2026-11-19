@@ -94,6 +94,47 @@ npm run admin -- list
 - **Journal** : chaque action (qui, quoi, quand, détails), y compris les actions automatiques (masquage après 3 signalements, mots interdits).
 - Renouvellement d'annonce limité à **une fois par 24 h** (sauf annonce expirée).
 
+## Alertes SMS / WhatsApp pour les nouveaux messages
+Quand un utilisateur reçoit un message et ne l'a **pas lu au bout de 2 minutes**, il reçoit une alerte courte :
+`OMONI : nouveau message de Jean à propos de « Toyota Corolla ». Répondez : https://…/messages/12`.
+L'alerte ne contient **jamais le contenu du message**.
+
+- **Préférences** dans 🔔 **Notifications** (menu Mon compte, `/compte/notifications`) :
+  - canal **SMS** (par défaut), **WhatsApp** ou **Aucune** ;
+  - **heures calmes** 22 h – 7 h, heure de Brazzaville (activées par défaut) : l'alerte est reportée à 7 h.
+- **Limites anti-spam / coûts** :
+  - au plus **1 alerte par conversation toutes les 30 min** : les messages suivants sont regroupés et l'alerte est reportée ;
+  - **10 alertes / 24 h** par utilisateur ;
+  - aucune alerte à un compte banni, ni pour un expéditeur banni ou bloqué par le destinataire.
+- **File d'attente en base** (table `alerts`) traitée toutes les 15 s par un planificateur interne. Elle survit donc aux redémarrages ; un envoi interrompu est repris.
+  - Les règles sont revérifiées au moment de l'envoi : message toujours non lu, blocage, bannissement, préférences.
+- **En SMS**, le texte est ramené à l'alphabet GSM 7 bits (« » devient ", accents hors GSM retirés) pour tenir en **un seul SMS** de 160 caractères.
+- **Admin › Alertes** (`/admin/alertes`) : journal des alertes (envoyée, en attente, non envoyée avec le motif, échec) avec le texte envoyé. Compteurs sur le tableau de bord.
+  - En **mode test** (`SMS_PROVIDER=dev`, `WHATSAPP_PROVIDER=dev`), rien n'est envoyé : les alertes apparaissent seulement dans cette page et dans les logs.
+
+| Variable | Rôle |
+|---|---|
+| `PUBLIC_URL` | URL publique du site pour le lien des alertes (ex. `https://omoni-4f76.onrender.com`). Sinon, l'hôte de la requête |
+| `WHATSAPP_PROVIDER` | `dev` (défaut) ou `meta` |
+| `WHATSAPP_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID` | WhatsApp Business Cloud API (Meta) |
+| `WHATSAPP_TEMPLATE`, `WHATSAPP_TEMPLATE_LANG`, `WHATSAPP_API_VERSION` | nom du modèle approuvé (`nouveau_message`), langue (`fr`), version de l'API (`v21.0`) |
+| `ALERT_DELAY_SEC`, `ALERT_THROTTLE_MIN`, `ALERT_DAILY_CAP`, `ALERT_TICK_SEC` | délai « non lu » (120), regroupement (30), plafond / 24 h (10), fréquence du planificateur (15) |
+
+Les SMS utilisent les fournisseurs déjà configurés pour les codes de connexion (`SMS_PROVIDER` : Twilio, Africa's Talking, passerelle HTTP).
+
+**Mettre en service WhatsApp (Meta WhatsApp Business Platform, Cloud API)** — ⚠ intégration écrite d'après la documentation de Meta, **non testée** :
+1. Créer un **Meta Business Portfolio** (business.facebook.com) puis une app sur developers.facebook.com, avec le produit **WhatsApp**. Meta fournit un numéro de test pour essayer.
+2. Ajouter un **numéro de téléphone dédié**, qui ne doit pas déjà être utilisé dans l'app WhatsApp, et le vérifier par SMS ou appel. Faire la **vérification d'entreprise** Meta (documents de la société, site web) pour lever les limites d'envoi et afficher le nom.
+3. Créer un **modèle de message** (catégorie **Utility**, langue **fr**) nommé `nouveau_message`, avec 3 variables :
+   `OMONI : nouveau message de {{1}} à propos de « {{2}} ». Répondez : {{3}}`.
+   Attendre son approbation (de quelques minutes à quelques jours).
+4. Créer un **utilisateur système** avec un **jeton permanent** (droits `whatsapp_business_messaging`), ajouter un moyen de paiement dans le compte WhatsApp Business, puis régler `WHATSAPP_PROVIDER=meta`, `WHATSAPP_TOKEN` et `WHATSAPP_PHONE_NUMBER_ID`.
+
+**Coûts indicatifs** (à vérifier sur les grilles tarifaires officielles, elles changent souvent) :
+- **WhatsApp** : Meta facture chaque message « Utility » hors fenêtre de 24 h, quelques centimes d'euro (environ 0,01–0,03 €, soit 7–20 FCFA) selon le pays.
+- **SMS** vers le Congo via Twilio ou Africa's Talking : en général plusieurs centimes d'euro par SMS. Un agrégateur local ou un accord avec MTN / Airtel est souvent moins cher. Un « Sender ID » alphanumérique (« OMONI ») peut nécessiter un enregistrement.
+- Avec les limites ci-dessus, un utilisateur coûte **au plus 10 alertes par jour**, et en pratique bien moins grâce au délai « non lu » et au regroupement.
+
 ## Boosts payants & Mobile Money (MTN MoMo, Airtel Money)
 
 **Options** (tarifs modifiables par l'admin dans `/admin/boosts`) :
@@ -229,10 +270,11 @@ Tests du mot de passe : `SITE_PASSWORD=… npm run test:gate`. Avec `SITE_PASSWO
 expiration, vendu, suppression, favoris, accès refusé à l'annonce d'un autre, CSRF, puis administration : 403 pour un non-admin, signalement → masquer → rétablir,
 pré-modération approuver / refuser, mots interdits, suppression, bannissement → connexion refusée → débannissement, journal ; messagerie : démarrer une
 conversation, réponse + actualisation automatique, non-lus, envoi sans JS, 403 pour un non-participant, blocage, signalement → lecture admin, mots interdits,
-utilisateur banni, limite d'envoi ; paiements : achat de boost réussi, échoué, expiré, callbacks rejoués (idempotence) et non signés,
+utilisateur banni, limite d'envoi ; alertes : mise en file après le délai « non lu », pas d'alerte si lu, regroupement 30 min, plafond quotidien,
+désactivation, expéditeur bloqué / banni, destinataire banni, heures calmes, page admin (lancer le serveur avec `ALERT_DELAY_SEC=3 ALERT_TICK_SEC=1`) ; paiements : achat de boost réussi, échoué, expiré, callbacks rejoués (idempotence) et non signés,
 impossible de booster l'annonce d'un autre, badges affichés puis expirés, Mes paiements, remboursement, tarifs, journal. Nécessite `playwright-core`
 et Chrome (`npm i -D playwright-core` ; variables `CHROME`, `BASE_URL`, `PLAYWRIGHT_CORE` facultatives ; `--no-shots` pour ne pas refaire les captures).
 `npm run test:clean` efface ensuite les données de test (garde les exemples, les signalements, conversations, boosts et paiements d'exemple, et remet les tarifs par défaut).
 
 ## Structure
-`server.js` (routes + pages) · `gate.js` (mot de passe du site, /healthz) · `messages.js` (messagerie) · `boosts.js` (boosts, pages de paiement, webhooks) · `payments.js` (fournisseurs Mobile Money) · `admin.js` (panneau d'administration) · `scripts/admin.js` (CLI admin) · `auth.js` · `sms.js` · `db.js` (schéma + migrations) · `config.js` (marque, villes, catégories, durées) · `public/` · `seed/` · `tests/`
+`server.js` (routes + pages) · `gate.js` (mot de passe du site, /healthz) · `messages.js` (messagerie) · `alerts.js` (alertes SMS / WhatsApp, préférences) · `whatsapp.js` (fournisseurs WhatsApp) · `boosts.js` (boosts, pages de paiement, webhooks) · `payments.js` (fournisseurs Mobile Money) · `admin.js` (panneau d'administration) · `scripts/admin.js` (CLI admin) · `auth.js` · `sms.js` · `db.js` (schéma + migrations) · `config.js` (marque, villes, catégories, durées) · `public/` · `seed/` · `tests/`

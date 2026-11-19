@@ -2,7 +2,7 @@
 const auth = require('./auth');
 
 module.exports = function mountAdmin(app, h) {
-  const { db, C, esc, layout, csrfField, fmtPrice, fmtDate, fmtPhone, normPhone, catBySlug, photoUrl, firstPhotoStmt, audit, STATUS_FR, deletePhotoFiles, LIVE, safeNext, DAY } = h;
+  const { alerts, db, C, esc, layout, csrfField, fmtPrice, fmtDate, fmtPhone, normPhone, catBySlug, photoUrl, firstPhotoStmt, audit, STATUS_FR, deletePhotoFiles, LIVE, safeNext, DAY } = h;
   const now = () => Date.now();
   const STATUSES = ['active', 'expired', 'sold', 'hidden', 'pending', 'rejected'];
   const stBadge = (ad) => {
@@ -26,7 +26,7 @@ module.exports = function mountAdmin(app, h) {
   });
   function adminPage(req, tab, title, body) {
     const c = counts();
-    const tabs = [['', 'Tableau de bord', ''], ['signalements', 'Signalements', c.reports], ['moderation', 'À valider', c.pending], ['annonces', 'Annonces', ''], ['utilisateurs', 'Utilisateurs', ''], ['paiements', 'Paiements', ''], ['boosts', 'Tarifs', ''], ['journal', 'Journal', '']];
+    const tabs = [['', 'Tableau de bord', ''], ['signalements', 'Signalements', c.reports], ['moderation', 'À valider', c.pending], ['annonces', 'Annonces', ''], ['utilisateurs', 'Utilisateurs', ''], ['paiements', 'Paiements', ''], ['boosts', 'Tarifs', ''], ['alertes', 'Alertes', ''], ['journal', 'Journal', '']];
     const msg = req.query.ok ? `<div class="notice ok">${esc(req.query.ok)}</div>` : req.query.err ? `<div class="notice bad">${esc(req.query.err)}</div>` : '';
     return layout(req, { title: 'Admin · ' + title, body: `<div class="admin">
       <nav class="atabs">${tabs.map(([k, l, n]) => `<a class="${tab === k ? 'on' : ''}" href="/admin${k ? '/' + k : ''}">${l}${n ? ` <span class="badge">${n}</span>` : ''}</a>`).join('')}</nav>
@@ -78,11 +78,15 @@ module.exports = function mountAdmin(app, h) {
       ['Recettes (total)', fp(rev(0)), '/admin/paiements?statut=success'],
       ['Annonces boostées actives', one(`SELECT COUNT(*) n FROM ads WHERE ${LIVE()} AND (featured_until > ? OR urgent_until > ?)`, t, t), '/admin/paiements'],
     ];
+    const al = alerts.stats24();
+    const alertTiles = [['Alertes envoyées (24 h)', al.sent || 0, '/admin/alertes?statut=sent'], ['Alertes en attente', al.queued || 0, '/admin/alertes?statut=queued'],
+      ['Non envoyées (24 h)', al.skipped || 0, '/admin/alertes?statut=skipped'], ['Échecs d\'envoi (24 h)', al.failed || 0, '/admin/alertes?statut=failed']];
     const byCat = Object.fromEntries(db.prepare(`SELECT category k, COUNT(*) n FROM ads WHERE ${LIVE()} GROUP BY category`).all().map((r) => [r.k, r.n]));
     const byCity = db.prepare(`SELECT city k, COUNT(*) n FROM ads WHERE ${LIVE()} GROUP BY city ORDER BY n DESC`).all();
     const premod = db.getSetting('premoderation') === '1';
     const body = `<h2 class="h2">Paiements (hors exemples, remboursements déduits)</h2><div class="stats">${money.map(([l, n, href]) => `<a class="stat" href="${href}"><strong class="money">${n}</strong><span>${l}</span></a>`).join('')}</div>
     <h2 class="h2">Activité</h2><div class="stats">${stats.map(([l, n, href]) => `<a class="stat" href="${href}"><strong>${n}</strong><span>${l}</span></a>`).join('')}</div>
+    <h2 class="h2">Alertes nouveaux messages (SMS / WhatsApp)</h2><div class="stats">${alertTiles.map(([l, n, href]) => `<a class="stat" href="${href}"><strong>${n}</strong><span>${l}</span></a>`).join('')}</div>
     <p class="small muted">Pré-modération : <strong>${premod ? 'activée' : 'désactivée'}</strong> · <a href="/admin/moderation#reglages">Réglages</a></p>
     <div class="two-col"><div><h2 class="h2">Par catégorie (en ligne)</h2><table class="tbl">${C.CATEGORIES.map((c) => `<tr><td>${c.icon} ${esc(c.name)}</td><td><a href="/admin/annonces?cat=${c.slug}&statut=active">${byCat[c.slug] || 0}</a></td></tr>`).join('')}</table></div>
     <div><h2 class="h2">Par ville (en ligne)</h2><table class="tbl">${byCity.map((r) => `<tr><td>${esc(r.k)}</td><td><a href="/admin/annonces?ville=${encodeURIComponent(r.k)}&statut=active">${r.n}</a></td></tr>`).join('') || '<tr><td>—</td></tr>'}</table></div></div>`;
@@ -405,6 +409,7 @@ module.exports = function mountAdmin(app, h) {
     auto_masquage: 'Masquage automatique', mots_interdits: 'Mots interdits détectés', role_admin: 'Rôle administrateur modifié',
     conversation_lue: 'Conversation signalée consultée', conversation_signalements_classes: 'Signalements de conversation classés', conversation_supprimee: 'Conversation supprimée', message_mots_interdits: 'Message avec mots interdits',
     paiement_confirme: 'Paiement confirmé (boost activé)', paiement_rembourse: 'Paiement marqué remboursé', tarifs_modifies: 'Tarifs des boosts modifiés' };
+  app.get('/admin/alertes', (req, res) => res.send(alerts.adminAlerts(req, adminPage)));
   app.get('/admin/journal', (req, res) => {
     const pg = Math.max(1, parseInt(req.query.page, 10) || 1);
     const rows = db.prepare(`SELECT * FROM audit_log ORDER BY id DESC LIMIT 100 OFFSET ${(pg - 1) * 100}`).all();

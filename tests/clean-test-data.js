@@ -9,7 +9,8 @@ db.exec('DELETE FROM blocks; DELETE FROM conversation_reports; DELETE FROM conve
 require('../seed/conversations')(db);
 db.exec("DELETE FROM transactions WHERE is_example = 0; DELETE FROM payment_events; UPDATE boost_products SET active = 1;");
 for (const [c, price, d, name] of [['remonter', 500, 0, 'Remonter en tête'], ['une', 2000, 7, 'À la une'], ['urgent', 1000, 7, 'Urgent']]) db.prepare('UPDATE boost_products SET price = ?, duration_days = ?, name = ? WHERE code = ?').run(price, d, name, c);
-require('../seed/boosts')(db); // boosts et paiements d'exemple remis à l'état initial // remet les conversations d'exemple dans leur état initial
+require('../seed/boosts')(db);
+require('../seed/alerts')(db); db.exec("UPDATE users SET notify_channel = 'sms', quiet_hours = 1; DELETE FROM settings WHERE key = 'alert_quiet_hours';"); // conversations, boosts, paiements et alertes d'exemple remis à l'état initial
 db.setSetting('premoderation', '0'); db.setSetting('banned_words', ''); db.setSetting('banned_words_action', 'pending');
 const UP = path.join(__dirname, '..', 'uploads');
 const used = new Set(db.prepare('SELECT filename FROM photos').all().map((r) => r.filename));

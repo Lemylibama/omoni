@@ -75,7 +75,7 @@ function layout(req, { title, body, desc = C.TAGLINE, scripts = '' }) {
   const acct = u
     ? `<a class="msg-link" href="/messages" aria-label="Messages${unread ? ` (${unread} non lus)` : ''}">💬${unread ? `<span class="badge hb" id="hdr-unread">${unread}</span>` : ''}</a><details class="menu"><summary aria-label="Mon compte"><span class="avatar sm">${u.display_name ? esc(Array.from(u.display_name.trim())[0].toUpperCase()) : '👤'}</span><span class="hide-xs">Mon compte</span></summary>
       <div class="menu-pop"><div class="menu-h">${esc(u.display_name || 'Mon compte')}<br><span class="muted small">${esc(fmtPhone(u.phone))}</span></div>
-      <a href="/messages">💬 Messages${unread ? ` <span class="badge">${unread}</span>` : ''}</a><a href="/mes-annonces">📋 Mes annonces</a><a href="/mes-favoris">♡ Mes favoris</a><a href="/mes-paiements">💳 Mes paiements</a>${u.role === 'admin' ? '<a href="/admin">🛡 Administration</a>' : ''}
+      <a href="/messages">💬 Messages${unread ? ` <span class="badge">${unread}</span>` : ''}</a><a href="/mes-annonces">📋 Mes annonces</a><a href="/mes-favoris">♡ Mes favoris</a><a href="/mes-paiements">💳 Mes paiements</a><a href="/compte/notifications">🔔 Notifications</a>${u.role === 'admin' ? '<a href="/admin">🛡 Administration</a>' : ''}
       <form method="post" action="/deconnexion">${csrfField(req)}<button type="submit">↩ Déconnexion</button></form></div></details>`
     : `<a class="login-link" href="/connexion?next=${encodeURIComponent(req.originalUrl.startsWith('/connexion') ? '/' : req.originalUrl)}">Se connecter</a>`;
   return `<!doctype html><html lang="fr"><head><meta charset="utf-8">
@@ -534,9 +534,10 @@ app.get('/annonce/:id/modifier', requireUser, (req, res) => {
 app.post('/annonce/:id/modifier', requireUser, (req, res) => { const ad = ownAd(req, res); if (ad) handleAdForm(req, res, { ad }); });
 
 // ---------- administration (voir admin.js) ----------
-require('./messages')(app, { db, C, esc, layout, page, csrfField, fmtPrice, fmtDate, photoUrl, firstPhotoStmt, audit, requireUser, bannedWordsIn, catBySlug });
+const alerts = require('./alerts')(app, { db, C, esc, layout, csrfField, fmtDate, fmtPhone, requireUser });
+require('./messages')(app, { alerts, db, C, esc, layout, page, csrfField, fmtPrice, fmtDate, photoUrl, firstPhotoStmt, audit, requireUser, bannedWordsIn, catBySlug });
 require('./boosts')(app, { db, C, esc, layout, page, csrfField, fmtPrice, fmtDate, fmtDay, fmtPhone, normPhone, photoUrl, firstPhotoStmt, audit, requireUser, catBySlug, DAY });
-require('./admin')(app, { db, C, esc, layout, page, csrfField, fmtPrice, fmtDate, fmtDay, fmtPhone, normPhone, catBySlug, photoUrl, firstPhotoStmt, audit, STATUS_FR, deletePhotoFiles, LIVE, safeNext, DAY, AD_TTL_DAYS });
+require('./admin')(app, { alerts, db, C, esc, layout, page, csrfField, fmtPrice, fmtDate, fmtDay, fmtPhone, normPhone, catBySlug, photoUrl, firstPhotoStmt, audit, STATUS_FR, deletePhotoFiles, LIVE, safeNext, DAY, AD_TTL_DAYS });
 
 app.use((req, res) => page(req, res, 404, 'Page introuvable', '<a class="btn" href="/">Retour à l\'accueil</a>'));
 app.use((err, req, res, next) => { console.error(err); res.status(500).send('Erreur serveur'); });

@@ -38,5 +38,6 @@ ads.forEach((a, i) => {
 EXAMPLE_REPORTS.forEach((r, i) => db.prepare("INSERT INTO reports (ad_id, reason, details, ip, created_at) VALUES (?,?,?,?,?)").run(adIds[r.ad - 1], r.reason, r.details, 'exemple-' + (i + 1), Date.now() - (i + 1) * 3600000));
 console.log(`${require('./conversations')(db)} conversations d'exemple.`);
 console.log(`${require('./boosts')(db)} boosts / paiements d'exemple.`);
+console.log(`${require('./alerts')(db)} alertes d'exemple.`);
 console.log(`Admin de démo : ${DEMO_ADMIN.phone} · ${EXAMPLE_REPORTS.length} signalements d'exemple.`);
 console.log(`${ads.length} annonces d'exemple ajoutées, réparties sur ${userIds.length} comptes de démo.`);

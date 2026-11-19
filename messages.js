@@ -2,7 +2,7 @@
 const auth = require('./auth');
 
 module.exports = function mountMessages(app, h) {
-  const { db, C, esc, layout, page, csrfField, fmtPrice, fmtDate, photoUrl, firstPhotoStmt, audit, requireUser, bannedWordsIn, catBySlug } = h;
+  const { alerts, db, C, esc, layout, page, csrfField, fmtPrice, fmtDate, photoUrl, firstPhotoStmt, audit, requireUser, bannedWordsIn, catBySlug } = h;
   const MAX = C.MSG_MAX_LENGTH || 1000;
   const SAFETY = '<div class="notice test small">🔒 <strong>Prudence :</strong> ne payez jamais d\'avance par Mobile Money (MTN MoMo, Airtel Money) ni par transfert avant d\'avoir vu l\'article. Méfiez-vous des « frais de livraison » ou « frais de dédouanement » demandés à l\'avance. Rencontrez-vous dans un lieu public.</div>';
   const REASONS = ['Arnaque / demande de paiement d\'avance', 'Harcèlement ou insultes', 'Spam / publicité', 'Contenu choquant', 'Autre'];
@@ -46,6 +46,7 @@ module.exports = function mountMessages(app, h) {
     const id = db.prepare('INSERT INTO messages (conversation_id, sender_id, body, flagged_words, created_at) VALUES (?,?,?,?,?)').run(c.id, req.user.id, body, flagged.join(', ') || null, now).lastInsertRowid;
     db.prepare('UPDATE conversations SET last_message_at = ? WHERE id = ?').run(now, c.id);
     markRead(c, req.user.id);
+    try { alerts?.onMessage(req, c, req.user.id); } catch (e) { console.error('Alerte (file)', e.message); }
     if (flagged.length) {
       db.prepare('INSERT INTO conversation_reports (conversation_id, reporter_id, reason, details, created_at) VALUES (?, NULL, ?, ?, ?)').run(c.id, 'Mots interdits détectés', `Message n° ${id} : ${flagged.join(', ')}`, now);
       audit(null, 'message_mots_interdits', 'conversation', c.id, `${flagged.join(', ')} (message n° ${id})`);

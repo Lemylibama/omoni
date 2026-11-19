@@ -1,4 +1,5 @@
-// Test de bout en bout (navigateur headless) — nécessite playwright-core + Chrome, serveur sur localhost:3000 en SMS_PROVIDER=dev.
+// Test de bout en bout (navigateur headless) — nécessite playwright-core + Chrome, serveur sur localhost:3000 en SMS_PROVIDER=dev
+// lancé avec ALERT_DELAY_SEC=3 ALERT_TICK_SEC=1 (alertes).
 // Après exécution : node tests/clean-test-data.js
 const path = require('path');
 const { chromium } = require(process.env.PLAYWRIGHT_CORE || 'playwright-core');
@@ -327,6 +328,90 @@ const statusOf = (id) => db.prepare('SELECT status FROM ads WHERE id=?').get(id)
   await s.goto(`${B}/annonce/${adB}/booster`); ok((await s.textContent('.opts')).includes('1 500 FCFA'), 'nouveau tarif appliqué');
   await a.goto(B + '/admin/journal'); const jp = await a.textContent('main');
   for (const t of ['Paiement confirmé', 'Paiement marqué remboursé', 'Tarifs des boosts modifiés']) ok(jp.includes(t), `journal : « ${t} »`);
+  // ===== Alertes SMS / WhatsApp (serveur lancé avec ALERT_DELAY_SEC=3 ALERT_TICK_SEC=1) =====
+  const waitFor = async (fn, ms = 9000) => { const t0 = Date.now(); while (Date.now() - t0 < ms) { const v = fn(); if (v) return v; await new Promise((r) => setTimeout(r, 250)); } return fn(); };
+  const ADMIN = db.prepare("SELECT id FROM users WHERE phone='+242060000001'").get().id;
+  const alertsFor = (uid, conv) => db.prepare('SELECT * FROM alerts WHERE user_id=? AND conversation_id=? ORDER BY id').all(uid, conv);
+  const lastAlert = (uid, conv) => alertsFor(uid, conv).pop();
+  const hourBrz = new Date(Date.now() + 3600000).getUTCHours();
+  const setQuiet = (on) => db.prepare("INSERT INTO settings (key, value) VALUES ('alert_quiet_hours', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value").run(on ? `${hourBrz}-${(hourBrz + 2) % 24}` : `${(hourBrz + 2) % 24}-${(hourBrz + 3) % 24}`);
+  setQuiet(false); // heures calmes globales : hors de l'heure actuelle
+  db.prepare('UPDATE messages SET created_at = created_at - 3600000 WHERE sender_id = ?').run(PRINCE); // lève la limite d'envoi atteinte plus haut
+  // préférences de Prince : WhatsApp, heures calmes désactivées (via la page Mon compte › Notifications)
+  await s.goto(B + '/'); await s.click('details.menu summary'); await s.click('a[href="/compte/notifications"]'); await s.waitForURL(/compte\/notifications$/);
+  ok(await s.isChecked('input[name=channel][value=sms]') && await s.isChecked('input[name=quiet]'), 'Notifications : SMS + heures calmes par défaut');
+  await s.check('input[name=channel][value=whatsapp]'); await s.uncheck('input[name=quiet]');
+  await Promise.all([s.waitForURL(/ok=1/), s.click('form.pform button[type=submit]')]);
+  ok((await s.textContent('.notice.ok')).includes('enregistrées'), 'préférences enregistrées');
+  if (SHOTS) await s.screenshot({ path: D + '16-notifications.png', fullPage: true });
+  const pr = db.prepare('SELECT notify_channel, quiet_hours FROM users WHERE id=?').get(PRINCE); ok(pr.notify_channel === 'whatsapp' && pr.quiet_hours === 0, 'préférences stockées : WhatsApp, sans heures calmes');
+  // l'admin écrit à Prince -> alerte en file, envoyée après le délai si toujours non lue
+  const adP = db.prepare(`SELECT id, title FROM ads WHERE user_id=? AND status='active' AND expires_at > ? AND id NOT IN (SELECT ad_id FROM conversations WHERE buyer_id=?) ORDER BY id LIMIT 1`).get(PRINCE, Date.now(), ADMIN);
+  await a.goto(`${B}/annonce/${adP.id}/contacter`); await a.fill('textarea[name=body]', 'Bonjour, est-ce toujours disponible ? SECRET-CONTENU-123');
+  await Promise.all([a.waitForURL(/\/messages\/\d+/), a.click('form.pform button[type=submit]')]);
+  const ac = Number(a.url().match(/messages\/(\d+)/)[1]);
+  let al = lastAlert(PRINCE, ac); ok(al && al.status === 'queued' && al.due_at - al.created_at >= 2500, 'nouveau message : alerte mise en file (envoi différé)');
+  await new Promise((r) => setTimeout(r, 1200)); ok(lastAlert(PRINCE, ac).status === 'queued', "pas d'envoi immédiat (attente du délai « non lu »)");
+  al = await waitFor(() => { const x = lastAlert(PRINCE, ac); return x.status !== 'queued' && x; });
+  ok(al.status === 'sent' && al.channel === 'whatsapp' && al.to_phone === '+242055551234', 'toujours non lu après le délai : alerte WhatsApp envoyée (mode test)');
+  ok(al.body.includes(`/messages/${ac}`) && al.body.includes('nouveau message de') && !al.body.includes('SECRET-CONTENU'), "texte : expéditeur, annonce et lien — jamais le contenu du message");
+  // regroupement : second message dans les 30 min -> reporté, pas de deuxième alerte
+  await a.fill('textarea[name=body]', 'Je peux passer demain.'); await a.click('form.composer button[type=submit], form[action$="/messages/' + ac + '"] button[type=submit]');
+  al = await waitFor(() => { const x = lastAlert(PRINCE, ac); return x.id !== alertsFor(PRINCE, ac)[0].id && x.reason && x; });
+  ok(al.status === 'queued' && al.due_at >= alertsFor(PRINCE, ac)[0].sent_at + 29 * 60000 && /Regroup/.test(al.reason), 'second message < 30 min : alerte regroupée et reportée (1 / 30 min par conversation)');
+  ok(alertsFor(PRINCE, ac).filter((x) => x.status === 'sent').length === 1, 'une seule alerte envoyée pour la conversation');
+  // message lu avant le délai -> pas d'alerte
+  await s.goto(`${B}/messages/${ac}`);
+  const csS2 = await csrfOf(s);
+  const sendS = (body) => s.request.post(`${B}/messages/${ac}`, { form: { _csrf: csS2, body }, headers: { Accept: 'application/json' } });
+  await sendS('Oui, toujours disponible.'); await a.goto(`${B}/messages/${ac}`); // l'admin lit tout de suite
+  al = await waitFor(() => { const x = lastAlert(ADMIN, ac); return x && x.status !== 'queued' && x; });
+  ok(al.status === 'skipped' && al.reason === 'Message déjà lu', 'message lu avant le délai : pas d\'alerte');
+  // heures calmes (activées par défaut pour l'admin) -> report à la fin de la plage
+  setQuiet(true); await sendS('Vous êtes là ?');
+  al = await waitFor(() => { const x = lastAlert(ADMIN, ac); return x.reason?.includes('Heures calmes') && x; });
+  ok(al.status === 'queued' && new Date(al.due_at + 3600000).getUTCHours() === (hourBrz + 2) % 24 && al.due_at > Date.now(), 'heures calmes : alerte reportée à la fin de la plage (heure de Brazzaville)');
+  setQuiet(false); db.prepare("UPDATE alerts SET status='skipped', reason='test' WHERE id=?").run(al.id);
+  // désactivation (Aucune) -> aucune alerte
+  await a.goto(B + '/compte/notifications'); await a.check('input[name=channel][value=none]'); await Promise.all([a.waitForURL(/ok=1/), a.click('form.pform button[type=submit]')]);
+  const nA = alertsFor(ADMIN, ac).length; await sendS('Encore un message'); await new Promise((r) => setTimeout(r, 1500));
+  ok(alertsFor(ADMIN, ac).length === nA, 'alertes désactivées (« Aucune ») : rien en file');
+  await a.check('input[name=channel][value=sms]'); await Promise.all([a.waitForURL(/ok=1/), a.click('form.pform button[type=submit]')]);
+  await a.goto(`${B}/messages/${ac}`);
+  // plafond quotidien
+  const fake = db.prepare("INSERT INTO alerts (user_id, conversation_id, sender_id, link, status, reason, due_at, created_at, sent_at) VALUES (?, ?, ?, 'x', 'sent', 'test-plafond', ?, ?, ?)");
+  const otherConv = db.prepare('SELECT id FROM conversations WHERE id != ? ORDER BY id LIMIT 1').get(ac).id;
+  for (let i = 0; i < 10; i++) fake.run(ADMIN, otherConv, PRINCE, Date.now() - 7200000, Date.now() - 7200000, Date.now() - 7200000 + i);
+  await sendS('Message après plafond');
+  al = await waitFor(() => { const x = lastAlert(ADMIN, ac); return x.status !== 'queued' && x; });
+  ok(al.status === 'skipped' && /Plafond/.test(al.reason), 'plafond quotidien (10 alertes / 24 h) : alerte non envoyée');
+  db.prepare("DELETE FROM alerts WHERE reason='test-plafond'").run(); await a.goto(`${B}/messages/${ac}`);
+  // expéditeur bloqué entre l'envoi et l'alerte
+  await sendS('Message puis blocage'); await a.request.post(`${B}/messages/${ac}/bloquer`, { form: { _csrf: await csrfOf(a) } });
+  al = await waitFor(() => { const x = lastAlert(ADMIN, ac); return x.status !== 'queued' && x; });
+  ok(al.status === 'skipped' && /bloqué/.test(al.reason), 'expéditeur bloqué : pas d\'alerte');
+  await a.goto(`${B}/messages/${ac}`); await a.request.post(`${B}/messages/${ac}/bloquer`, { form: { _csrf: await csrfOf(a) } });
+  // expéditeur banni / destinataire banni
+  await s.goto('about:blank'); // évite l'actualisation automatique de Prince pendant qu'il est banni (cookie effacé)
+  await sendS('Message puis bannissement'); db.prepare('UPDATE users SET banned_at=? WHERE id=?').run(Date.now(), PRINCE);
+  al = await waitFor(() => { const x = lastAlert(ADMIN, ac); return x.status !== 'queued' && x; });
+  ok(al.status === 'skipped' && /Expéditeur banni/.test(al.reason), 'expéditeur banni : pas d\'alerte');
+  db.prepare('UPDATE users SET banned_at=NULL WHERE id=?').run(PRINCE);
+  db.prepare("UPDATE alerts SET sent_at = sent_at - 3600000 WHERE user_id=? AND conversation_id=? AND status='sent'").run(PRINCE, ac); // lève le regroupement 30 min
+  db.prepare("UPDATE alerts SET status='skipped', reason='test' WHERE user_id=? AND status='queued'").run(PRINCE);
+  await a.goto(`${B}/messages/${ac}`); await a.fill('textarea[name=body]', 'Message puis bannissement du destinataire');
+  await a.click('form[action$="/messages/' + ac + '"] button[type=submit]');
+  await waitFor(() => lastAlert(PRINCE, ac)?.status === 'queued'); db.prepare('UPDATE users SET banned_at=? WHERE id=?').run(Date.now(), PRINCE);
+  al = await waitFor(() => { const x = lastAlert(PRINCE, ac); return x.status !== 'queued' && x; });
+  ok(al.status === 'skipped' && /Destinataire banni/.test(al.reason), 'destinataire banni : pas d\'alerte');
+  db.prepare('UPDATE users SET banned_at=NULL WHERE id=?').run(PRINCE);
+  // admin : page « Alertes envoyées » + tableau de bord
+  { const st = (await s.request.get(`${B}/admin/alertes`)).status(); ok(st === 403, 'non-admin : /admin/alertes -> 403 (' + st + ')'); }
+  await a.goto(B + '/admin'); ok((await a.textContent('main')).includes('Alertes envoyées (24 h)'), 'tableau de bord : compteurs d\'alertes');
+  await a.goto(B + '/admin/alertes'); const at = await a.textContent('main');
+  ok(['Envoyée', 'Non envoyée', 'Message déjà lu', 'Mode test'].every((t) => at.includes(t)), 'admin : journal des alertes avec statuts et motifs');
+  if (SHOTS) await a.screenshot({ path: D + '17-admin-alertes.png' });
+  await s.goto(B + '/');
   // déconnexion
   await s.click('details.menu summary'); await Promise.all([s.waitForURL(B + '/'), s.click('.menu-pop button')]);
   ok(await s.isVisible('a.login-link'), 'déconnexion OK');
