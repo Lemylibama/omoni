@@ -11,6 +11,7 @@ if (process.env.AUTO_SEED !== '0' && !db.prepare('SELECT COUNT(*) n FROM ads').g
   execFileSync(process.execPath, [require('path').join(__dirname, 'seed', 'seed.js')], { stdio: 'inherit' });
 }
 const C = require('./config');
+const Q = require('./quartiers');
 const auth = require('./auth');
 const sms = require('./sms');
 
@@ -96,10 +97,21 @@ function layout(req, { title, body, desc = C.TAGLINE, scripts = '' }) {
   <p class="muted">Conseils : rencontrez le vendeur dans un lieu public, vérifiez l'article avant de payer, ne versez jamais d'avance par Mobile Money à un inconnu.</p>
   <p class="muted">Version de démonstration — les annonces marquées « Exemple » sont fictives.</p>
 </div></footer>
-<script src="/static/app.js?v=2" defer></script>${scripts}
+<script src="/static/app.js?v=3" defer></script>${scripts}
 </body></html>`;
 }
 
+// <select> de quartiers : toutes les villes (groupes « Ville · … ») si aucune ville choisie, sinon celle de la ville.
+// Sans JS le formulaire reste utilisable (validation serveur) ; avec JS (app.js), la liste est filtrée selon la ville.
+const normTxt = (s) => String(s).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+function quartierSelect(name, city, value, { any = 'Tous les quartiers', id = '' } = {}) {
+  const cities = city ? [city] : Object.keys(Q.DATA);
+  const groups = cities.flatMap((c) => Q.groupsFor(c).filter(([g]) => g || city).map(([g, n]) => [city ? (g || 'Autre') : `${c} · ${g}`, n]));
+  if (!city) groups.push(['Autre', [Q.OTHER]]);
+  const opt = (n) => `<option ${n === value ? 'selected' : ''}>${esc(n)}</option>`;
+  return `<select name="${name}" ${id ? `id="${id}"` : ''} data-quartiers="${esc(JSON.stringify(Object.fromEntries(C.CITIES.map((c) => [c, Q.groupsFor(c)]))))}" data-any="${esc(any)}">
+    <option value="">${esc(any)}</option>${groups.map(([g, n]) => `<optgroup label="${esc(g)}">${n.map(opt).join('')}</optgroup>`).join('')}</select>`;
+}
 function favButton(req, adId, isFav) {
   if (!req.user) return `<a class="fav" href="/connexion?next=${encodeURIComponent(req.originalUrl)}" aria-label="Ajouter aux favoris (connexion requise)" title="Se connecter pour ajouter aux favoris">♡</a>`;
   return `<form class="fav-f" method="post" action="/favoris/${adId}">${csrfField(req)}<input type="hidden" name="back" value="${esc(req.originalUrl)}">
@@ -117,7 +129,7 @@ function card(req, favs) {
   <div class="card-body">
     <div class="card-title">${esc(ad.title)}</div>
     <div class="card-price">${fmtPrice(ad.price)}</div>
-    <div class="card-meta">${esc(ad.city)} · ${fmtDate(ad.created_at)}</div>
+    <div class="card-meta">${esc(Q.place(ad))} · ${fmtDate(ad.created_at)}</div>
   </div></a>${favButton(req, ad.id, favs.has(ad.id))}</div>`;
   };
 }
@@ -177,15 +189,23 @@ app.get('/annonces', (req, res) => {
     q: String(req.query.q || '').trim().slice(0, 100),
     cat: catBySlug[req.query.cat] ? req.query.cat : '',
     ville: C.CITIES.includes(req.query.ville) ? req.query.ville : '',
+    quartier: '',
     min: parseInt(req.query.min, 10) >= 0 ? parseInt(req.query.min, 10) : '',
     max: parseInt(req.query.max, 10) >= 0 ? parseInt(req.query.max, 10) : '',
     tri: SORTS[req.query.tri] ? req.query.tri : 'recent',
   };
+  { const qv = String(req.query.quartier || ''); if (qv && (f.ville ? Q.isValid(f.ville, qv) : Q.ALL.includes(qv))) f.quartier = qv; }
   const pg = Math.max(1, parseInt(req.query.page, 10) || 1);
   const where = [LIVE()]; const params = [];
-  if (f.q) { for (const w of f.q.split(/\s+/).slice(0, 6)) { where.push('(title LIKE ? OR description LIKE ?)'); params.push(`%${w}%`, `%${w}%`); } }
+  if (f.q) { // mot-clé : titre, description et quartier (sans tenir compte des accents pour les noms de quartiers)
+    for (const w of f.q.split(/\s+/).slice(0, 6)) {
+      const qn = Q.ALL.filter((n) => n !== Q.OTHER && normTxt(n).includes(normTxt(w)));
+      where.push(`(title LIKE ? OR description LIKE ? OR quartier LIKE ?${qn.length ? ` OR quartier IN (${qn.map(() => '?').join(',')})` : ''})`); params.push(`%${w}%`, `%${w}%`, `%${w}%`, ...qn);
+    }
+  }
   if (f.cat) { where.push('category = ?'); params.push(f.cat); }
   if (f.ville) { where.push('city = ?'); params.push(f.ville); }
+  if (f.quartier) { where.push('quartier = ?'); params.push(f.quartier); }
   if (f.min !== '') { where.push('price >= ?'); params.push(f.min); }
   if (f.max !== '') { where.push('price <= ?'); params.push(f.max); }
   const w = where.join(' AND ');
@@ -195,14 +215,16 @@ app.get('/annonces', (req, res) => {
   const pinned = pg === 1 && f.tri === 'recent' ? db.prepare(`SELECT * FROM ads WHERE ${w} AND featured_until > ? ORDER BY random() LIMIT ${C.FEATURED_SLOTS_LIST || 3}`).all(...params, Date.now()) : [];
   const qs = (over) => '/annonces?' + new URLSearchParams(Object.entries({ ...f, ...over }).filter(([, v]) => v !== '' && v != null)).toString();
   const heading = f.cat ? catBySlug[f.cat].name : 'Toutes les annonces';
-  const active = !!(f.q || f.cat || f.ville || f.min !== '' || f.max !== '');
+  const active = !!(f.q || f.cat || f.ville || f.quartier || f.min !== '' || f.max !== '');
   const body = `
-  <h1 class="h1">${esc(heading)}${f.ville ? ' à ' + esc(f.ville) : ''}</h1>
+  <h1 class="h1">${esc(heading)}${f.quartier && f.quartier !== Q.OTHER ? ' à ' + esc(f.quartier) + (f.ville ? ', ' + esc(f.ville) : '') : f.ville ? ' à ' + esc(f.ville) : ''}</h1>
+  ${f.quartier ? `<p class="chips"><a class="chip on" href="${qs({ quartier: '', page: '' })}" aria-label="Retirer le filtre quartier">📍 ${esc(f.quartier)} ✕</a></p>` : ''}
   <details class="filters"><summary>Filtres & tri ${active ? '<span class="dot"></span>' : ''}</summary>
   <form method="get" action="/annonces" class="fform">
     <label>Mot-clé<input type="search" name="q" value="${esc(f.q)}" placeholder="ex : Toyota, iPhone, parcelle…"></label>
     <label>Catégorie<select name="cat"><option value="">Toutes</option>${C.CATEGORIES.map((c) => `<option value="${c.slug}" ${f.cat === c.slug ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}</select></label>
-    <label>Ville<select name="ville"><option value="">Toutes</option>${C.CITIES.map((c) => `<option ${f.ville === c ? 'selected' : ''}>${esc(c)}</option>`).join('')}</select></label>
+    <div class="two"><label>Ville<select name="ville" data-qtarget="fq"><option value="">Toutes</option>${C.CITIES.map((c) => `<option ${f.ville === c ? 'selected' : ''}>${esc(c)}</option>`).join('')}</select></label>
+    <label>Quartier${quartierSelect('quartier', f.ville, f.quartier, { id: 'fq' })}</label></div>
     <div class="two"><label>Prix min (FCFA)<input type="number" inputmode="numeric" min="0" step="500" name="min" value="${f.min}"></label>
     <label>Prix max (FCFA)<input type="number" inputmode="numeric" min="0" step="500" name="max" value="${f.max}"></label></div>
     <label>Trier par<select name="tri">
@@ -245,14 +267,14 @@ app.get('/annonce/:id', (req, res) => {
   const similar = db.prepare(`SELECT * FROM ads WHERE ${LIVE()} AND category = ? AND id != ? ORDER BY created_at DESC LIMIT 4`).all(ad.category, ad.id);
   const favs = favSet(req);
   const body = `${notices.join('')}
-  <nav class="crumbs"><a href="/">Accueil</a> › <a href="/annonces?cat=${ad.category}">${esc(cat?.name)}</a> › <a href="/annonces?cat=${ad.category}&ville=${encodeURIComponent(ad.city)}">${esc(ad.city)}</a></nav>
+  <nav class="crumbs"><a href="/">Accueil</a> › <a href="/annonces?cat=${ad.category}">${esc(cat?.name)}</a> › <a href="/annonces?cat=${ad.category}&ville=${encodeURIComponent(ad.city)}">${esc(ad.city)}</a>${ad.quartier && ad.quartier !== Q.OTHER ? ` › <a href="/annonces?ville=${encodeURIComponent(ad.city)}&quartier=${encodeURIComponent(ad.quartier)}">${esc(ad.quartier)}</a>` : ''}</nav>
   <div class="detail">
   <div class="gallery">${photos.length ? `<div class="slides">${photos.map((p, i) => `<img src="${photoUrl(p.filename)}" alt="Photo ${i + 1} — ${esc(ad.title)}" ${i ? 'loading="lazy"' : ''}>`).join('')}</div>${photos.length > 1 ? `<div class="gcount">${photos.length} photos — faites glisser →</div>` : ''}` : `<div class="noimg big">${cat?.icon || '📦'}</div>`}</div>
   <div class="info">
     ${ad.is_example ? '<span class="tag-ex static">Annonce exemple (fictive)</span>' : ''}${ad.status === 'sold' ? ' <span class="tag-sold static">Vendu</span>' : ''}${ad.featured_until > Date.now() ? ' <span class="tag-une static">⭐ À la une</span>' : ''}${ad.urgent_until > Date.now() ? ' <span class="tag-urg static">🔥 Urgent</span>' : ''}
     <div class="title-row"><h1 class="h1">${esc(ad.title)}</h1>${favButton(req, ad.id, favs.has(ad.id))}</div>
     <div class="price">${fmtPrice(ad.price)}</div>
-    <ul class="facts"><li>📍 ${esc(ad.city)}</li><li>${cat?.icon} ${esc(cat?.name)}</li><li>🕒 Publiée : ${fmtDate(ad.created_at)}</li></ul>
+    <ul class="facts"><li class="place">📍 ${esc(Q.place(ad))}</li><li>${cat?.icon} ${esc(cat?.name)}</li><li>🕒 Publiée : ${fmtDate(ad.created_at)}</li></ul>
     <div class="seller"><span class="avatar">${esc(Array.from(ad.seller_name.trim())[0]?.toUpperCase() || '?')}</span><div><strong>${esc(ad.seller_name)}</strong><div class="muted">Particulier · ${esc(fmtPhone(ad.phone))}</div></div></div>
     ${ad.status === 'sold' ? '<p class="notice info">Cet article a été vendu.</p>' : `<div class="contact"><a class="btn btn-call" href="tel:+242${ad.phone}">📞 Appeler</a><a class="btn btn-wa" href="${wa}" target="_blank" rel="noopener">💬 WhatsApp</a>${!isOwner && ad.status === 'active' && !expired && !sellerBanned && ad.user_id ? `<a class="btn btn-msg" href="/annonce/${ad.id}/contacter">✉️ Envoyer un message</a>` : ''}</div>`}
     <h2 class="h2">Description</h2><div class="desc">${esc(ad.description).replace(/\n/g, '<br>')}</div>
@@ -368,7 +390,7 @@ app.get('/mes-annonces', requireUser, (req, res) => {
     const f = (action, label, cls = 'btn-ghost') => `<form method="post" action="/annonce/${ad.id}/${action}">${csrfField(req)}<button class="btn sm ${cls}" type="submit">${label}</button></form>`;
     return `<div class="myad" id="ad-${ad.id}"><a class="myad-img" href="/annonce/${ad.id}">${img ? `<img src="${img}" alt="" loading="lazy">` : `<span class="noimg">${catBySlug[ad.category]?.icon}</span>`}</a>
     <div class="myad-b"><a class="myad-t" href="/annonce/${ad.id}">${esc(ad.title)}</a><div class="card-price">${fmtPrice(ad.price)}</div>
-    <div class="small">${st} <span class="muted">${esc(ad.city)} · publiée ${fmtDate(ad.created_at).toLowerCase()}</span></div><div class="small muted">${exp}</div></div>
+    <div class="small">${st} <span class="muted">${esc(Q.place(ad))} · publiée ${fmtDate(ad.created_at).toLowerCase()}</span></div><div class="small muted">${exp}</div></div>
     ${ad.featured_until > now || ad.urgent_until > now ? `<div class="small myboost">${ad.featured_until > now ? `<span class="tag-une static">⭐ À la une</span> jusqu'au ${fmtDay(ad.featured_until)} ` : ''}${ad.urgent_until > now ? `<span class="tag-urg static">🔥 Urgent</span> jusqu'au ${fmtDay(ad.urgent_until)}` : ''}</div>` : ''}
     <div class="myad-a">${ad.status === 'active' && !expired ? `<a class="btn sm btn-boost" href="/annonce/${ad.id}/booster">🚀 Booster</a>` : ''}<a class="btn sm btn-ghost" href="/annonce/${ad.id}/modifier">✏️ Modifier</a>
     ${ad.status !== 'active' ? '' : (!expired && now - ad.created_at < RENEW_COOLDOWN) ? `<span class="btn sm btn-ghost disabled" title="Un renouvellement par 24 h">🔄 Renouvelable dans ${Math.ceil((RENEW_COOLDOWN - (now - ad.created_at)) / 3600000)} h</span>` : f('renouveler', '🔄 Renouveler')}
@@ -450,9 +472,10 @@ function formPage(req, v = {}, errors = {}, { ad = null, photos = [] } = {}) {
   <form id="postf" class="pform" method="post" action="${action}" enctype="multipart/form-data" novalidate data-existing="${photos.length}" data-max="${C.MAX_PHOTOS}">${csrfField(req)}
     <label>Titre de l'annonce *<input name="title" maxlength="80" required value="${esc(v.title)}" placeholder="ex : Toyota Corolla 2012 climatisée">${err('title')}</label>
     <div class="two"><label>Catégorie *<select name="category" required><option value="">Choisir…</option>${C.CATEGORIES.map((c) => `<option value="${c.slug}" ${v.category === c.slug ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}</select>${err('category')}</label>
-    <label>Ville *<select name="city" required><option value="">Choisir…</option>${C.CITIES.map((c) => `<option ${v.city === c ? 'selected' : ''}>${esc(c)}</option>`).join('')}</select>${err('city')}</label></div>
+    <label>Ville *<select name="city" required data-qtarget="pq"><option value="">Choisir…</option>${C.CITIES.map((c) => `<option ${v.city === c ? 'selected' : ''}>${esc(c)}</option>`).join('')}</select>${err('city')}</label></div>
+    <label>Quartier <span class="muted small">(facultatif)</span>${quartierSelect('quartier', C.CITIES.includes(v.city) ? v.city : '', v.quartier || '', { any: 'Choisir le quartier…', id: 'pq' })}${err('quartier')}</label>
     <label>Prix (FCFA) *<input name="price" type="number" inputmode="numeric" min="0" max="10000000000" step="1" required value="${esc(v.price)}" placeholder="ex : 250000 (0 = à discuter)">${err('price')}</label>
-    <label>Description *<textarea name="description" rows="6" maxlength="4000" required placeholder="État, caractéristiques, quartier, conditions de vente…">${esc(v.description)}</textarea>${err('description')}</label>
+    <label>Description *<textarea name="description" rows="6" maxlength="4000" required placeholder="État, caractéristiques, conditions de vente…">${esc(v.description)}</textarea>${err('description')}</label>
     <fieldset><legend>Photos (jusqu'à ${C.MAX_PHOTOS})</legend>
       ${photos.length ? `<p class="small muted">Photos actuelles — cochez celles à retirer :</p><div class="previews">${photos.map((p, i) => `<label class="pv old"><img src="${photoUrl(p.filename)}" alt="">${i === 0 ? '<span class="first">Principale</span>' : ''}<span class="rm"><input type="checkbox" name="remove_photo" value="${p.id}"> Retirer</span></label>`).join('')}</div>` : ''}
       <input id="photos" name="photos" type="file" accept="image/*" multiple>
@@ -469,12 +492,13 @@ function formPage(req, v = {}, errors = {}, { ad = null, photos = [] } = {}) {
 }
 function validate(b) {
   const e = {}; const v = {
-    title: String(b.title || '').trim(), category: b.category, city: b.city, price: String(b.price ?? '').trim(),
+    title: String(b.title || '').trim(), category: b.category, city: b.city, quartier: String(b.quartier || '').trim(), price: String(b.price ?? '').trim(),
     description: String(b.description || '').trim(), seller_name: String(b.seller_name || '').trim(), phone: String(b.phone || '').trim(),
   };
   if (v.title.length < 5 || v.title.length > 80) e.title = 'Le titre doit faire entre 5 et 80 caractères.';
   if (!catBySlug[v.category]) e.category = 'Choisissez une catégorie.';
   if (!C.CITIES.includes(v.city)) e.city = 'Choisissez une ville.';
+  else if (!Q.isValid(v.city, v.quartier)) e.quartier = `Ce quartier ne correspond pas à ${v.city} : choisissez un quartier de la liste ou « ${Q.OTHER} ».`;
   if (!/^\d{1,11}$/.test(v.price.replace(/\s/g, ''))) e.price = 'Indiquez un prix en FCFA (chiffres uniquement, 0 = à discuter).';
   if (v.description.length < 20 || v.description.length > 4000) e.description = 'La description doit faire au moins 20 caractères.';
   if (v.seller_name.length < 2 || v.seller_name.length > 50) e.seller_name = 'Indiquez votre nom (2 caractères minimum).';
@@ -507,15 +531,15 @@ function handleAdForm(req, res, { ad = null } = {}) {
     let id;
     if (ad) {
       id = ad.id;
-      db.prepare('UPDATE ads SET title=?, category=?, city=?, price=?, description=?, seller_name=?, phone=?, status=?, moderation_note=?, flagged_words=? WHERE id = ?').run(v.title, v.category, v.city, price, v.description, v.seller_name, phone, status, note, flagged.join(', ') || null, id);
+      db.prepare('UPDATE ads SET title=?, category=?, city=?, quartier=?, price=?, description=?, seller_name=?, phone=?, status=?, moderation_note=?, flagged_words=? WHERE id = ?').run(v.title, v.category, v.city, v.quartier || null, price, v.description, v.seller_name, phone, status, note, flagged.join(', ') || null, id);
       const removed = existing.filter((p) => removeIds.has(p.id));
       for (const p of removed) db.prepare('DELETE FROM photos WHERE id = ?').run(p.id);
       if (!ad.is_example) deletePhotoFiles(removed);
       kept.forEach((p, i) => db.prepare('UPDATE photos SET position = ? WHERE id = ?').run(i, p.id));
     } else {
       const now = Date.now();
-      id = db.prepare('INSERT INTO ads (title, category, city, price, description, seller_name, phone, user_id, created_at, expires_at, status, moderation_note, flagged_words) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)')
-        .run(v.title, v.category, v.city, price, v.description, v.seller_name, phone, req.user.id, now, now + AD_TTL_DAYS * DAY, status, note, flagged.join(', ') || null).lastInsertRowid;
+      id = db.prepare('INSERT INTO ads (title, category, city, quartier, price, description, seller_name, phone, user_id, created_at, expires_at, status, moderation_note, flagged_words) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)')
+        .run(v.title, v.category, v.city, v.quartier || null, price, v.description, v.seller_name, phone, req.user.id, now, now + AD_TTL_DAYS * DAY, status, note, flagged.join(', ') || null).lastInsertRowid;
     }
     const ins = db.prepare('INSERT INTO photos (ad_id, filename, position) VALUES (?,?,?)');
     files.forEach((f, i) => ins.run(id, f.filename, kept.length + i));
@@ -529,7 +553,7 @@ app.post('/deposer', requireUser, (req, res) => handleAdForm(req, res));
 app.get('/annonce/:id/modifier', requireUser, (req, res) => {
   const ad = ownAd(req, res); if (!ad) return;
   const photos = db.prepare('SELECT * FROM photos WHERE ad_id = ? ORDER BY position').all(ad.id);
-  res.send(formPage(req, { ...ad, price: String(ad.price) }, {}, { ad, photos }));
+  res.send(formPage(req, { ...ad, quartier: ad.quartier || '', price: String(ad.price) }, {}, { ad, photos }));
 });
 app.post('/annonce/:id/modifier', requireUser, (req, res) => { const ad = ownAd(req, res); if (ad) handleAdForm(req, res, { ad }); });
 

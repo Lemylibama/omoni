@@ -43,7 +43,7 @@ module.exports = function mountAdmin(app, h) {
     const seller = ad.user_id ? db.prepare('SELECT * FROM users WHERE id = ?').get(ad.user_id) : null;
     return `<div class="myad" id="ad-${ad.id}"><a class="myad-img" href="/annonce/${ad.id}">${img ? `<img src="${img}" alt="" loading="lazy">` : `<span class="noimg">${catBySlug[ad.category]?.icon}</span>`}</a>
     <div class="myad-b"><a class="myad-t" href="/annonce/${ad.id}">${esc(ad.title)}</a> <span class="muted small">n° ${ad.id}</span><div class="card-price">${fmtPrice(ad.price)}</div>
-    <div class="small">${stBadge(ad)} ${ad.is_example ? '<span class="st st-sold">Exemple</span>' : ''} <span class="muted">${esc(catBySlug[ad.category]?.name)} · ${esc(ad.city)} · ${fmtDate(ad.created_at)}</span></div>
+    <div class="small">${stBadge(ad)} ${ad.is_example ? '<span class="st st-sold">Exemple</span>' : ''} <span class="muted">${esc(catBySlug[ad.category]?.name)} · ${esc(ad.quartier && ad.quartier !== 'Autre quartier' ? ad.quartier + ', ' + ad.city : ad.city)} · ${fmtDate(ad.created_at)}</span></div>
     <div class="small muted">Vendeur : ${seller ? `<a href="/admin/utilisateurs/${seller.id}">${esc(seller.display_name || fmtPhone(seller.phone))}</a> (${esc(fmtPhone(seller.phone))})${seller.banned_at ? ' <span class="st st-bad">Banni</span>' : ''}` : '—'} · contact ${esc(fmtPhone(ad.phone))}</div>
     ${ad.flagged_words ? `<div class="small"><span class="st st-bad">Mots interdits</span> ${esc(ad.flagged_words)}</div>` : ''}
     ${ad.moderation_note ? `<div class="small muted">Note : ${esc(ad.moderation_note)}</div>` : ''}</div>

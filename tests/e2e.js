@@ -328,6 +328,50 @@ const statusOf = (id) => db.prepare('SELECT status FROM ads WHERE id=?').get(id)
   await s.goto(`${B}/annonce/${adB}/booster`); ok((await s.textContent('.opts')).includes('1 500 FCFA'), 'nouveau tarif appliqué');
   await a.goto(B + '/admin/journal'); const jp = await a.textContent('main');
   for (const t of ['Paiement confirmé', 'Paiement marqué remboursé', 'Tarifs des boosts modifiés']) ok(jp.includes(t), `journal : « ${t} »`);
+  // ===== Quartiers =====
+  await s.goto(B + '/deposer');
+  ok(await s.locator('select[name=quartier] optgroup[label="Brazzaville · 3 · Poto-Poto"]').count() === 1 || await s.locator('select[name=quartier] option', { hasText: 'Tié-Tié' }).count() > 0, 'dépôt : liste des quartiers présente');
+  const rawForm = await (await s.request.get(B + '/deposer')).text();
+  ok(rawForm.includes('label="Brazzaville · 3 · Poto-Poto"') && rawForm.includes('label="Pointe-Noire · Arrondissements"') && rawForm.includes('Autre quartier'), 'sans JS : quartiers de toutes les villes, groupés par ville');
+  await s.selectOption('[name=city]', 'Brazzaville');
+  const qOpts = await s.locator('#pq option').allTextContents();
+  ok(qOpts.includes('Poto-Poto') && qOpts.includes('Autre quartier') && !qOpts.includes('Tié-Tié'), 'avec JS : la liste suit la ville choisie (Brazzaville)');
+  await s.selectOption('[name=city]', 'Pointe-Noire'); ok((await s.locator('#pq option').allTextContents()).includes('Tié-Tié'), '… puis Pointe-Noire');
+  await s.selectOption('[name=city]', 'Brazzaville'); await s.selectOption('#pq', 'Poto-Poto');
+  await s.fill('input[name=title]', 'Ventilateur Binatone test quartier'); await s.selectOption('[name=category]', 'maison');
+  await s.fill('[name=price]', '25000'); await s.fill('textarea[name=description]', 'Ventilateur sur pied en bon état, test automatique du quartier.');
+  await s.fill('input[name=seller_name]', 'Prince K.');
+  if (SHOTS) { await s.locator('#pq').scrollIntoViewIfNeeded(); await s.evaluate(() => window.scrollTo(0, document.querySelector('#pq').getBoundingClientRect().top + window.scrollY - 260)); await s.screenshot({ path: D + '18-deposer-quartier.png' }); }
+  await Promise.all([s.waitForURL(/annonce\/\d+\?nouveau=1/), s.click('#submitb')]);
+  const qAd = Number(s.url().match(/annonce\/(\d+)/)[1]);
+  ok(db.prepare('SELECT quartier FROM ads WHERE id=?').get(qAd).quartier === 'Poto-Poto', 'quartier enregistré');
+  ok((await s.textContent('.facts .place')).includes('Poto-Poto, Brazzaville') && await s.locator('.crumbs a[href*="quartier=Poto-Poto"]').count() === 1, 'page annonce : « Poto-Poto, Brazzaville » + lien du quartier');
+  // validation serveur : quartier d'une autre ville refusé
+  const bad = await s.request.post(B + '/deposer', { multipart: { _csrf: await csrfOf(s), title: 'Test quartier incohérent', category: 'maison', city: 'Pointe-Noire', quartier: 'Poto-Poto', price: '1000', description: 'Description assez longue pour le test du quartier.', seller_name: 'Prince K.', phone: '055551234' } });
+  ok(bad.status() === 400 && (await bad.text()).includes('ne correspond pas à Pointe-Noire'), 'serveur : quartier d\'une autre ville refusé');
+  const bad2 = await s.request.post(B + '/deposer', { multipart: { _csrf: await csrfOf(s), title: 'Test quartier inventé', category: 'maison', city: 'Brazzaville', quartier: 'Quartier inventé', price: '1000', description: 'Description assez longue pour le test du quartier.', seller_name: 'Prince K.', phone: '055551234' } });
+  ok(bad2.status() === 400, 'serveur : quartier inconnu refusé');
+  // modification : quartier pré-sélectionné, passage à « Autre quartier »
+  await s.goto(`${B}/annonce/${qAd}/modifier`); ok(await s.inputValue('#pq') === 'Poto-Poto', 'modification : quartier pré-sélectionné');
+  await s.selectOption('#pq', 'Autre quartier'); await Promise.all([s.waitForURL(/modifie=1/), s.click('#submitb')]);
+  ok((await s.textContent('.facts .place')).trim() === '📍 Brazzaville', '« Autre quartier » : seule la ville est affichée');
+  await s.goto(`${B}/annonce/${qAd}/modifier`); await s.selectOption('#pq', 'Poto-Poto'); await Promise.all([s.waitForURL(/modifie=1/), s.click('#submitb')]);
+  // filtre + cartes
+  await s.goto(B + '/annonces'); await s.click('details.filters summary'); await s.selectOption('[name=ville]', 'Brazzaville'); await s.selectOption('#fq', 'Poto-Poto');
+  await Promise.all([s.waitForURL(/quartier=Poto-Poto/), s.click('.fform button[type=submit]')]);
+  const metas = await s.locator('.grid .card-meta').allTextContents();
+  ok(metas.length >= 3 && metas.every((m) => m.includes('Poto-Poto, Brazzaville')), `filtre quartier : ${metas.length} annonces, toutes « Poto-Poto, Brazzaville »`);
+  ok((await s.textContent('h1')).includes('à Poto-Poto, Brazzaville'), 'titre de la liste avec le quartier');
+  if (SHOTS) await s.screenshot({ path: D + '19-filtre-quartier.png' });
+  await s.goto(`${B}/annonces?ville=Pointe-Noire&quartier=Poto-Poto`); ok(!(await s.textContent('h1')).includes('Poto-Poto'), 'quartier incohérent avec la ville : filtre ignoré');
+  // sans JS : le formulaire de filtre fonctionne (quartiers groupés par ville)
+  const nojs = await br.newContext({ javaScriptEnabled: false }); const nj = await nojs.newPage();
+  await nj.goto(B + '/annonces'); await nj.click('details.filters summary'); await nj.selectOption('[name=quartier]', 'Talangaï'); await Promise.all([nj.waitForURL(/quartier=/), nj.click('.fform button[type=submit]')]);
+  const njm = await nj.locator('.grid .card-meta').allTextContents(); ok(njm.length >= 1 && njm.every((m) => m.includes('Talangaï')), 'sans JS : filtre par quartier');
+  await nojs.close();
+  // recherche par mot-clé : quartier, sans accents
+  await ap.goto(`${B}/annonces?q=talangai`); ok((await ap.locator('.grid .card-meta').allTextContents()).some((m) => m.includes('Talangaï')), 'mot-clé « talangai » : trouve les annonces de Talangaï (accents ignorés)');
+  await ap.goto(`${B}/annonces?q=poto`); ok((await ap.locator('.grid .card-title, .grid h3').allTextContents()).join(' ').includes('Ventilateur Binatone') || (await ap.content()).includes('Ventilateur Binatone'), 'mot-clé « poto » : trouve l\'annonce du quartier Poto-Poto');
   // ===== Alertes SMS / WhatsApp (serveur lancé avec ALERT_DELAY_SEC=3 ALERT_TICK_SEC=1) =====
   const waitFor = async (fn, ms = 9000) => { const t0 = Date.now(); while (Date.now() - t0 < ms) { const v = fn(); if (v) return v; await new Promise((r) => setTimeout(r, 250)); } return fn(); };
   const ADMIN = db.prepare("SELECT id FROM users WHERE phone='+242060000001'").get().id;

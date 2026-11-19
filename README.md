@@ -54,6 +54,18 @@ En **mode test** (`SMS_PROVIDER=dev`), aucun SMS n'est envoyé : le code s'affic
 - **Favoris** (♡ sur les cartes et la page annonce, page **Mes favoris**).
 - Contrôle de propriété : on ne peut modifier / supprimer / renouveler que ses propres annonces (403 sinon).
 - Signalements : annonce masquée automatiquement après 3 signalements ouverts d'IP différentes (journalisé).
+- **Quartiers** (`quartiers.js`) : liste courte et vérifiée de quartiers et arrondissements :
+  - Brazzaville : les 9 arrondissements et des quartiers connus (Plateau des 15 ans, La Glacière, Mpila, Moukondo, Centre-ville, Kintélé…) ;
+  - Pointe-Noire : les 6 arrondissements, plus Côte sauvage, Matendé, Siafoumou… ;
+  - Dolisie, Nkayi, Owando et Ouesso : quelques noms attestés ;
+  - « Autre quartier » pour chaque ville.
+
+  Le quartier est **facultatif** (colonne `ads.quartier`, nulle pour les anciennes annonces).
+  - Le menu déroulant fonctionne **sans JS** (toutes les villes, groupées), avec une validation côté serveur : le quartier doit appartenir à la ville. Avec JS, la liste suit la ville choisie.
+  - Filtre « Quartier » dans la recherche.
+  - Affichage « Poto-Poto, Brazzaville » sur les cartes et la page annonce, avec un lien vers le quartier.
+  - La recherche par mot-clé trouve aussi les quartiers, sans tenir compte des accents (« talangai »).
+  - Pour ajouter un quartier, modifier `quartiers.js` (noms vérifiés uniquement).
 - **Boosts payants** (À la une, Urgent, Remonter en tête) réglés par **MTN MoMo / Airtel Money** : voir plus bas.
 
 ## Messagerie (`/messages`)
@@ -272,9 +284,9 @@ pré-modération approuver / refuser, mots interdits, suppression, bannissement 
 conversation, réponse + actualisation automatique, non-lus, envoi sans JS, 403 pour un non-participant, blocage, signalement → lecture admin, mots interdits,
 utilisateur banni, limite d'envoi ; alertes : mise en file après le délai « non lu », pas d'alerte si lu, regroupement 30 min, plafond quotidien,
 désactivation, expéditeur bloqué / banni, destinataire banni, heures calmes, page admin (lancer le serveur avec `ALERT_DELAY_SEC=3 ALERT_TICK_SEC=1`) ; paiements : achat de boost réussi, échoué, expiré, callbacks rejoués (idempotence) et non signés,
-impossible de booster l'annonce d'un autre, badges affichés puis expirés, Mes paiements, remboursement, tarifs, journal. Nécessite `playwright-core`
+impossible de booster l'annonce d'un autre, quartiers (liste selon la ville avec et sans JS, validation serveur, filtre, affichage, recherche sans accents), badges affichés puis expirés, Mes paiements, remboursement, tarifs, journal. Nécessite `playwright-core`
 et Chrome (`npm i -D playwright-core` ; variables `CHROME`, `BASE_URL`, `PLAYWRIGHT_CORE` facultatives ; `--no-shots` pour ne pas refaire les captures).
 `npm run test:clean` efface ensuite les données de test (garde les exemples, les signalements, conversations, boosts et paiements d'exemple, et remet les tarifs par défaut).
 
 ## Structure
-`server.js` (routes + pages) · `gate.js` (mot de passe du site, /healthz) · `messages.js` (messagerie) · `alerts.js` (alertes SMS / WhatsApp, préférences) · `whatsapp.js` (fournisseurs WhatsApp) · `boosts.js` (boosts, pages de paiement, webhooks) · `payments.js` (fournisseurs Mobile Money) · `admin.js` (panneau d'administration) · `scripts/admin.js` (CLI admin) · `auth.js` · `sms.js` · `db.js` (schéma + migrations) · `config.js` (marque, villes, catégories, durées) · `public/` · `seed/` · `tests/`
+`server.js` (routes + pages) · `gate.js` (mot de passe du site, /healthz) · `messages.js` (messagerie) · `alerts.js` (alertes SMS / WhatsApp, préférences) · `whatsapp.js` (fournisseurs WhatsApp) · `boosts.js` (boosts, pages de paiement, webhooks) · `payments.js` (fournisseurs Mobile Money) · `admin.js` (panneau d'administration) · `scripts/admin.js` (CLI admin) · `auth.js` · `sms.js` · `db.js` (schéma + migrations) · `config.js` (marque, villes, catégories, durées) · `quartiers.js` (quartiers par ville) · `public/` · `seed/` · `tests/`

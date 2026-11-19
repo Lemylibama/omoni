@@ -1,24 +1,305 @@
 [
- {"title":"Toyota Corolla 2012 climatisée, boîte auto","category":"vehicules","city":"Brazzaville","price":4500000,"seller":"Jean-Claude M.","phone":"061234567","h":3,"desc":"Toyota Corolla 2012, essence, boîte automatique, climatisation fonctionnelle. 142 000 km. Pneus neufs, carte grise à jour. Visible à Moungali. Prix légèrement négociable.","img":["Toyota Corolla","Vue arrière"]},
- {"title":"Moto Haojue 125 cm³ presque neuve","category":"vehicules","city":"Pointe-Noire","price":650000,"seller":"Prince K.","phone":"055551234","h":20,"desc":"Moto Haojue 125, achetée il y a 6 mois, très peu roulée. Idéale pour taxi-moto ou usage personnel. Papiers en règle. Quartier Tié-Tié.","img":["Moto 125"]},
- {"title":"Hyundai Tucson 2015 diesel 4x4","category":"vehicules","city":"Dolisie","price":8200000,"seller":"Garage Niari Auto","phone":"068887766","h":50,"desc":"Hyundai Tucson 2015, diesel, 4x4, intérieur cuir. Entretien régulier, factures disponibles. Parfait pour les pistes du Niari.","img":["Hyundai Tucson"]},
- {"title":"Appartement 2 chambres à louer – Bacongo","category":"immobilier","city":"Brazzaville","price":150000,"seller":"Mireille N.","phone":"066543210","h":5,"desc":"Appartement 2 chambres, salon, cuisine, douche interne, eau et électricité (compteur individuel). Loyer mensuel 150 000 FCFA, 3 mois de caution. Proche du marché Total.","img":["Appartement","Salon"]},
- {"title":"Parcelle 20 x 25 m titrée à vendre","category":"immobilier","city":"Pointe-Noire","price":12000000,"seller":"Alain B.","phone":"069998877","h":30,"desc":"Parcelle de 500 m² avec titre foncier, quartier Mpita, accessible en voiture toute l'année. Idéale pour construction de maison familiale.","img":["Parcelle 500 m²"]},
- {"title":"Maison 3 chambres avec cour – Oyo","category":"immobilier","city":"Oyo","price":25000000,"seller":"Famille Ngolo","phone":"044556677","h":96,"desc":"Maison en dur de 3 chambres, salon, 2 douches, grande cour clôturée, forage. Quartier calme, proche de la route nationale.","img":["Maison 3 ch."]},
- {"title":"iPhone 12 128 Go – très bon état","category":"electronique","city":"Brazzaville","price":220000,"seller":"Grâce O.","phone":"065432198","h":1,"desc":"iPhone 12, 128 Go, couleur noire. Batterie à 86 %. Aucune rayure, vendu avec chargeur et coque. Remise en main propre à Poto-Poto.","img":["iPhone 12"]},
- {"title":"Samsung Galaxy A14 neuf sous emballage","category":"electronique","city":"Pointe-Noire","price":95000,"seller":"Phone Center PN","phone":"055443322","h":8,"desc":"Samsung Galaxy A14, 64 Go, double SIM, neuf sous emballage avec garantie boutique 3 mois. Livraison possible en ville.","img":["Galaxy A14"]},
- {"title":"Télévision LG 43 pouces Smart TV","category":"electronique","city":"Nkayi","price":180000,"seller":"Patrick L.","phone":"067778899","h":40,"desc":"TV LG 43 pouces Smart TV, Full HD, Netflix et YouTube intégrés. Achetée en 2023, fonctionne parfaitement. Télécommande incluse.","img":["TV LG 43\""]},
- {"title":"Groupe électrogène 5 kVA","category":"electronique","city":"Ouesso","price":350000,"seller":"Didier E.","phone":"066112233","h":72,"desc":"Groupe électrogène essence 5 kVA, démarrage manuel et électrique. Révisé récemment. Idéal pour maison ou petit commerce.","img":["Groupe 5 kVA"]},
- {"title":"Salon complet 7 places en bois","category":"maison","city":"Brazzaville","price":400000,"seller":"Menuiserie Mavoungou","phone":"069001122","h":12,"desc":"Salon 7 places en bois massif avec coussins, fabrication locale. Plusieurs coloris de tissu disponibles. Livraison à Brazzaville possible.","img":["Salon 7 places"]},
- {"title":"Réfrigérateur Hisense 200 L","category":"maison","city":"Dolisie","price":145000,"seller":"Sandrine T.","phone":"057654321","h":60,"desc":"Réfrigérateur Hisense 200 litres, combiné avec congélateur. Très peu de consommation, fonctionne bien. Cause déménagement.","img":["Frigo 200 L"]},
- {"title":"Pagnes wax hollandais – lot de 6 yards","category":"mode","city":"Brazzaville","price":35000,"seller":"Maman Bijou","phone":"068765432","h":3,"desc":"Pagnes wax de qualité, 6 yards, plusieurs motifs disponibles. Prix spécial pour les commandes de mariage ou de deuil.","img":["Pagnes wax"]},
- {"title":"Chaussures homme cuir pointure 43","category":"mode","city":"Pointe-Noire","price":25000,"seller":"Chris S.","phone":"066334455","h":28,"desc":"Chaussures habillées en cuir véritable, pointure 43, portées 2 fois. Parfaites pour cérémonies.","img":["Chaussures cuir"]},
- {"title":"Recherche vendeur(se) pour boutique","category":"emploi","city":"Brazzaville","price":80000,"seller":"Boutique Étoile","phone":"055667788","h":6,"desc":"Boutique de vêtements à Ouenzé recrute un(e) vendeur(se) dynamique. Salaire mensuel 80 000 FCFA + commissions. Horaires 8 h – 18 h, lundi au samedi.","img":["On recrute"]},
- {"title":"Chauffeur expérimenté cherche emploi","category":"emploi","city":"Pointe-Noire","price":0,"seller":"Serge M.","phone":"064445566","h":48,"desc":"Chauffeur avec permis B et C, 8 ans d'expérience (transport de personnel, livraisons). Sérieux et ponctuel. Disponible immédiatement.","img":[]},
- {"title":"Cours de soutien maths & physique","category":"services","city":"Brazzaville","price":20000,"seller":"Prof. Ibara","phone":"067001234","h":15,"desc":"Enseignant expérimenté propose des cours de soutien en maths et physique, niveau collège et lycée (BEPC et BAC). 20 000 FCFA par mois, 2 séances par semaine, à domicile.","img":["Cours maths"]},
- {"title":"Réparation téléphones et ordinateurs","category":"services","city":"Owando","price":0,"seller":"Tech Cuvette","phone":"056789012","h":100,"desc":"Réparation écrans, batteries, connecteurs de charge, installation de logiciels. Travail rapide et garanti. Devis gratuit.","img":["Réparation"]},
- {"title":"Sacs de manioc (foufou) 50 kg","category":"agriculture","city":"Madingou","price":18000,"seller":"Coopérative Bouenza","phone":"068223344","h":22,"desc":"Farine de manioc (foufou) de qualité, sacs de 50 kg. Production locale de la Bouenza. Livraison possible vers Brazzaville et Pointe-Noire pour les grosses commandes.","img":["Foufou 50 kg"]},
- {"title":"Poulets de chair prêts à vendre","category":"agriculture","city":"Kinkala","price":5000,"seller":"Ferme du Pool","phone":"065557788","h":10,"desc":"Poulets de chair de 45 jours, environ 2,5 kg. Prix à l'unité 5 000 FCFA, réduction à partir de 20 poulets. Élevés sans produits douteux.","img":["Poulets de chair"]},
- {"title":"Plants de palmier à huile sélectionnés","category":"agriculture","city":"Sibiti","price":1500,"seller":"Pépinière Lékoumou","phone":"057112233","h":130,"desc":"Plants de palmier à huile variété améliorée, 8 mois. 1 500 FCFA le plant. Conseils de plantation offerts.","img":["Plants palmier"]},
- {"title":"Machine à coudre Singer manuelle","category":"autres","city":"Impfondo","price":60000,"seller":"Albertine D.","phone":"066998877","h":80,"desc":"Machine à coudre Singer à pédale, bon état de marche. Idéale pour couturière débutante.","img":["Machine à coudre"]}
+  {
+    "title": "Toyota Corolla 2012 climatisée, boîte auto",
+    "category": "vehicules",
+    "city": "Brazzaville",
+    "quartier": "Moungali",
+    "price": 4500000,
+    "seller": "Jean-Claude M.",
+    "phone": "061234567",
+    "h": 3,
+    "desc": "Toyota Corolla 2012, essence, boîte automatique, climatisation fonctionnelle. 142 000 km. Pneus neufs, carte grise à jour. Visible à Moungali. Prix légèrement négociable.",
+    "img": [
+      "Toyota Corolla",
+      "Vue arrière"
+    ]
+  },
+  {
+    "title": "Moto Haojue 125 cm³ presque neuve",
+    "category": "vehicules",
+    "city": "Pointe-Noire",
+    "quartier": "Tié-Tié",
+    "price": 650000,
+    "seller": "Prince K.",
+    "phone": "055551234",
+    "h": 20,
+    "desc": "Moto Haojue 125, achetée il y a 6 mois, très peu roulée. Idéale pour taxi-moto ou usage personnel. Papiers en règle. Quartier Tié-Tié.",
+    "img": [
+      "Moto 125"
+    ]
+  },
+  {
+    "title": "Hyundai Tucson 2015 diesel 4x4",
+    "category": "vehicules",
+    "city": "Dolisie",
+    "quartier": "Mangadzi",
+    "price": 8200000,
+    "seller": "Garage Niari Auto",
+    "phone": "068887766",
+    "h": 50,
+    "desc": "Hyundai Tucson 2015, diesel, 4x4, intérieur cuir. Entretien régulier, factures disponibles. Parfait pour les pistes du Niari.",
+    "img": [
+      "Hyundai Tucson"
+    ]
+  },
+  {
+    "title": "Appartement 2 chambres à louer – Bacongo",
+    "category": "immobilier",
+    "city": "Brazzaville",
+    "quartier": "Bacongo",
+    "price": 150000,
+    "seller": "Mireille N.",
+    "phone": "066543210",
+    "h": 5,
+    "desc": "Appartement 2 chambres, salon, cuisine, douche interne, eau et électricité (compteur individuel). Loyer mensuel 150 000 FCFA, 3 mois de caution. Proche du marché Total.",
+    "img": [
+      "Appartement",
+      "Salon"
+    ]
+  },
+  {
+    "title": "Parcelle 20 x 25 m titrée à vendre",
+    "category": "immobilier",
+    "city": "Pointe-Noire",
+    "quartier": "Autre quartier",
+    "price": 12000000,
+    "seller": "Alain B.",
+    "phone": "069998877",
+    "h": 30,
+    "desc": "Parcelle de 500 m² avec titre foncier, quartier Mpita, accessible en voiture toute l'année. Idéale pour construction de maison familiale.",
+    "img": [
+      "Parcelle 500 m²"
+    ]
+  },
+  {
+    "title": "Maison 3 chambres avec cour – Oyo",
+    "category": "immobilier",
+    "city": "Oyo",
+    "price": 25000000,
+    "seller": "Famille Ngolo",
+    "phone": "044556677",
+    "h": 96,
+    "desc": "Maison en dur de 3 chambres, salon, 2 douches, grande cour clôturée, forage. Quartier calme, proche de la route nationale.",
+    "img": [
+      "Maison 3 ch."
+    ]
+  },
+  {
+    "title": "iPhone 12 128 Go – très bon état",
+    "category": "electronique",
+    "city": "Brazzaville",
+    "quartier": "Poto-Poto",
+    "price": 220000,
+    "seller": "Grâce O.",
+    "phone": "065432198",
+    "h": 1,
+    "desc": "iPhone 12, 128 Go, couleur noire. Batterie à 86 %. Aucune rayure, vendu avec chargeur et coque. Remise en main propre à Poto-Poto.",
+    "img": [
+      "iPhone 12"
+    ]
+  },
+  {
+    "title": "Samsung Galaxy A14 neuf sous emballage",
+    "category": "electronique",
+    "city": "Pointe-Noire",
+    "quartier": "Centre-ville",
+    "price": 95000,
+    "seller": "Phone Center PN",
+    "phone": "055443322",
+    "h": 8,
+    "desc": "Samsung Galaxy A14, 64 Go, double SIM, neuf sous emballage avec garantie boutique 3 mois. Livraison possible en ville.",
+    "img": [
+      "Galaxy A14"
+    ]
+  },
+  {
+    "title": "Télévision LG 43 pouces Smart TV",
+    "category": "electronique",
+    "city": "Nkayi",
+    "quartier": "Mouana-Nto",
+    "price": 180000,
+    "seller": "Patrick L.",
+    "phone": "067778899",
+    "h": 40,
+    "desc": "TV LG 43 pouces Smart TV, Full HD, Netflix et YouTube intégrés. Achetée en 2023, fonctionne parfaitement. Télécommande incluse.",
+    "img": [
+      "TV LG 43\""
+    ]
+  },
+  {
+    "title": "Groupe électrogène 5 kVA",
+    "category": "electronique",
+    "city": "Ouesso",
+    "quartier": "Mbindjo",
+    "price": 350000,
+    "seller": "Didier E.",
+    "phone": "066112233",
+    "h": 72,
+    "desc": "Groupe électrogène essence 5 kVA, démarrage manuel et électrique. Révisé récemment. Idéal pour maison ou petit commerce.",
+    "img": [
+      "Groupe 5 kVA"
+    ]
+  },
+  {
+    "title": "Salon complet 7 places en bois",
+    "category": "maison",
+    "city": "Brazzaville",
+    "quartier": "Talangaï",
+    "price": 400000,
+    "seller": "Menuiserie Mavoungou",
+    "phone": "069001122",
+    "h": 12,
+    "desc": "Salon 7 places en bois massif avec coussins, fabrication locale. Plusieurs coloris de tissu disponibles. Livraison à Brazzaville possible.",
+    "img": [
+      "Salon 7 places"
+    ]
+  },
+  {
+    "title": "Réfrigérateur Hisense 200 L",
+    "category": "maison",
+    "city": "Dolisie",
+    "quartier": "Foundou-Foundou",
+    "price": 145000,
+    "seller": "Sandrine T.",
+    "phone": "057654321",
+    "h": 60,
+    "desc": "Réfrigérateur Hisense 200 litres, combiné avec congélateur. Très peu de consommation, fonctionne bien. Cause déménagement.",
+    "img": [
+      "Frigo 200 L"
+    ]
+  },
+  {
+    "title": "Pagnes wax hollandais – lot de 6 yards",
+    "category": "mode",
+    "city": "Brazzaville",
+    "quartier": "Poto-Poto",
+    "price": 35000,
+    "seller": "Maman Bijou",
+    "phone": "068765432",
+    "h": 3,
+    "desc": "Pagnes wax de qualité, 6 yards, plusieurs motifs disponibles. Prix spécial pour les commandes de mariage ou de deuil.",
+    "img": [
+      "Pagnes wax"
+    ]
+  },
+  {
+    "title": "Chaussures homme cuir pointure 43",
+    "category": "mode",
+    "city": "Pointe-Noire",
+    "quartier": "Loandjili",
+    "price": 25000,
+    "seller": "Chris S.",
+    "phone": "066334455",
+    "h": 28,
+    "desc": "Chaussures habillées en cuir véritable, pointure 43, portées 2 fois. Parfaites pour cérémonies.",
+    "img": [
+      "Chaussures cuir"
+    ]
+  },
+  {
+    "title": "Recherche vendeur(se) pour boutique",
+    "category": "emploi",
+    "city": "Brazzaville",
+    "quartier": "Ouenzé",
+    "price": 80000,
+    "seller": "Boutique Étoile",
+    "phone": "055667788",
+    "h": 6,
+    "desc": "Boutique de vêtements à Ouenzé recrute un(e) vendeur(se) dynamique. Salaire mensuel 80 000 FCFA + commissions. Horaires 8 h – 18 h, lundi au samedi.",
+    "img": [
+      "On recrute"
+    ]
+  },
+  {
+    "title": "Chauffeur expérimenté cherche emploi",
+    "category": "emploi",
+    "city": "Pointe-Noire",
+    "quartier": "Mvou-Mvou",
+    "price": 0,
+    "seller": "Serge M.",
+    "phone": "064445566",
+    "h": 48,
+    "desc": "Chauffeur avec permis B et C, 8 ans d'expérience (transport de personnel, livraisons). Sérieux et ponctuel. Disponible immédiatement.",
+    "img": []
+  },
+  {
+    "title": "Cours de soutien maths & physique",
+    "category": "services",
+    "city": "Brazzaville",
+    "quartier": "Plateau des 15 ans",
+    "price": 20000,
+    "seller": "Prof. Ibara",
+    "phone": "067001234",
+    "h": 15,
+    "desc": "Enseignant expérimenté propose des cours de soutien en maths et physique, niveau collège et lycée (BEPC et BAC). 20 000 FCFA par mois, 2 séances par semaine, à domicile.",
+    "img": [
+      "Cours maths"
+    ]
+  },
+  {
+    "title": "Réparation téléphones et ordinateurs",
+    "category": "services",
+    "city": "Owando",
+    "quartier": "Onkindodzoko",
+    "price": 0,
+    "seller": "Tech Cuvette",
+    "phone": "056789012",
+    "h": 100,
+    "desc": "Réparation écrans, batteries, connecteurs de charge, installation de logiciels. Travail rapide et garanti. Devis gratuit.",
+    "img": [
+      "Réparation"
+    ]
+  },
+  {
+    "title": "Sacs de manioc (foufou) 50 kg",
+    "category": "agriculture",
+    "city": "Madingou",
+    "price": 18000,
+    "seller": "Coopérative Bouenza",
+    "phone": "068223344",
+    "h": 22,
+    "desc": "Farine de manioc (foufou) de qualité, sacs de 50 kg. Production locale de la Bouenza. Livraison possible vers Brazzaville et Pointe-Noire pour les grosses commandes.",
+    "img": [
+      "Foufou 50 kg"
+    ]
+  },
+  {
+    "title": "Poulets de chair prêts à vendre",
+    "category": "agriculture",
+    "city": "Kinkala",
+    "price": 5000,
+    "seller": "Ferme du Pool",
+    "phone": "065557788",
+    "h": 10,
+    "desc": "Poulets de chair de 45 jours, environ 2,5 kg. Prix à l'unité 5 000 FCFA, réduction à partir de 20 poulets. Élevés sans produits douteux.",
+    "img": [
+      "Poulets de chair"
+    ]
+  },
+  {
+    "title": "Plants de palmier à huile sélectionnés",
+    "category": "agriculture",
+    "city": "Sibiti",
+    "price": 1500,
+    "seller": "Pépinière Lékoumou",
+    "phone": "057112233",
+    "h": 130,
+    "desc": "Plants de palmier à huile variété améliorée, 8 mois. 1 500 FCFA le plant. Conseils de plantation offerts.",
+    "img": [
+      "Plants palmier"
+    ]
+  },
+  {
+    "title": "Machine à coudre Singer manuelle",
+    "category": "autres",
+    "city": "Impfondo",
+    "price": 60000,
+    "seller": "Albertine D.",
+    "phone": "066998877",
+    "h": 80,
+    "desc": "Machine à coudre Singer à pédale, bon état de marche. Idéale pour couturière débutante.",
+    "img": [
+      "Machine à coudre"
+    ]
+  }
 ]

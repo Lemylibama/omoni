@@ -230,3 +230,6 @@ CREATE INDEX IF NOT EXISTS idx_alerts_due ON alerts(status, due_at);
 CREATE INDEX IF NOT EXISTS idx_alerts_user ON alerts(user_id, status, sent_at);
 CREATE INDEX IF NOT EXISTS idx_alerts_conv ON alerts(user_id, conversation_id, status);
 `);
+// v7 : quartier (facultatif) — voir quartiers.js
+addCol('ads', 'quartier', 'TEXT');
+db.exec('CREATE INDEX IF NOT EXISTS idx_ads_quartier ON ads(city, quartier)');

@@ -27,11 +27,11 @@ if (db.prepare('SELECT COUNT(*) n FROM ads WHERE is_example=1').get().n) { conso
 const userIds = DEMO_USERS.map((u) => db.prepare('INSERT INTO users (phone, display_name, is_demo, created_at) VALUES (?,?,1,?) ON CONFLICT(phone) DO UPDATE SET is_demo=1 RETURNING id').get(u.phone, u.name, Date.now()).id);
 db.prepare("INSERT INTO users (phone, display_name, role, is_demo, created_at) VALUES (?,?,'admin',1,?) ON CONFLICT(phone) DO UPDATE SET role='admin', is_demo=1").run(DEMO_ADMIN.phone, DEMO_ADMIN.name, Date.now());
 const adIds = [];
-const insAd = db.prepare('INSERT INTO ads (title, category, city, price, description, seller_name, phone, is_example, user_id, created_at, expires_at) VALUES (?,?,?,?,?,?,?,1,?,?,?)');
+const insAd = db.prepare('INSERT INTO ads (title, category, city, quartier, price, description, seller_name, phone, is_example, user_id, created_at, expires_at) VALUES (?,?,?,?,?,?,?,?,1,?,?,?)');
 const insPh = db.prepare('INSERT INTO photos (ad_id, filename, position) VALUES (?,?,?)');
 ads.forEach((a, i) => {
   const created = Date.now() - a.h * 3600000 - i * 60000;
-  const id = insAd.run(a.title, a.category, a.city, a.price, a.desc, a.seller, a.phone, userIds[i % userIds.length], created, created + TTL).lastInsertRowid;
+  const id = insAd.run(a.title, a.category, a.city, a.quartier || null, a.price, a.desc, a.seller, a.phone, userIds[i % userIds.length], created, created + TTL).lastInsertRowid;
   adIds.push(id);
   a.img.forEach((_, j) => { const f = `ex${String(i + 1).padStart(2, '0')}-${j + 1}.jpg`; fs.copyFileSync(path.join(__dirname, 'images', f), path.join(UP, f)); insPh.run(id, f, j); });
 });
