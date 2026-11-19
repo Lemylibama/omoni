@@ -1,0 +1,24 @@
+# Blueprint Render — OMONI (essai, offre gratuite).
+# ⚠ Offre gratuite : disque éphémère -> la base SQLite et les photos sont remises à zéro à chaque redémarrage / mise en veille / déploiement
+#   (les données d'exemple sont recréées automatiquement au démarrage).
+services:
+  - type: web
+    name: omoni
+    runtime: node
+    plan: free
+    region: frankfurt
+    buildCommand: npm ci --omit=dev
+    startCommand: npm start
+    healthCheckPath: /healthz
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: SMS_PROVIDER
+        value: dev            # codes de connexion affichés à l'écran (essai uniquement)
+      - key: PAYMENT_PROVIDER
+        value: dev            # paiements simulés (essai uniquement)
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: SITE_PASSWORD
+        sync: false           # à saisir dans le tableau de bord Render lors de la création
