@@ -10,6 +10,8 @@ const tryPw = (pw, xff, next = '/annonces') => fetch(B + '/acces', { method: 'PO
   if (!PW) { ok((await get('/')).status === 200, 'sans SITE_PASSWORD : site ouvert'); ok((await get('/acces')).status === 404, 'sans SITE_PASSWORD : pas de page /acces'); return console.log('GATE OK (désactivé)'); }
   let r = await get('/annonces?cat=mode'); ok(r.status === 302 && r.headers.get('location') === '/acces?next=%2Fannonces%3Fcat%3Dmode', 'page HTML -> redirection vers /acces');
   ok((await get('/static/style.css')).status === 200, 'feuille de style accessible (page d\'accès)');
+  for (const u of ['/static/fonts/bricolage-grotesque-800.woff2', '/static/brand/favicon.svg', '/static/brand/favicon-32.png']) ok((await get(u)).status === 200, `${u} accessible (page d'accès)`);
+  for (const u of ['/static/fonts/../app.js', '/static/brand/x/../../app.js', '/static/post.js']) ok([302, 401, 404].includes((await get(u)).status) && (await get(u)).status !== 200, `${u} non exempté`);
   for (const u of ['/static/app.js', '/uploads/ex01-1.jpg', '/annonce/1', '/admin', '/connexion']) ok([302, 401].includes((await get(u)).status), `${u} protégé`);
   r = await fetch(B + '/webhooks/dev', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
   ok(r.status === 401 && /Basic/.test(r.headers.get('www-authenticate')), 'callbacks (webhooks) protégés : 401 + Basic');

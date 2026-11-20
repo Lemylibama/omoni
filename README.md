@@ -290,3 +290,11 @@ et Chrome (`npm i -D playwright-core` ; variables `CHROME`, `BASE_URL`, `PLAYWRI
 
 ## Structure
 `server.js` (routes + pages) · `gate.js` (mot de passe du site, /healthz) · `messages.js` (messagerie) · `alerts.js` (alertes SMS / WhatsApp, préférences) · `whatsapp.js` (fournisseurs WhatsApp) · `boosts.js` (boosts, pages de paiement, webhooks) · `payments.js` (fournisseurs Mobile Money) · `admin.js` (panneau d'administration) · `scripts/admin.js` (CLI admin) · `auth.js` · `sms.js` · `db.js` (schéma + migrations) · `config.js` (marque, villes, catégories, durées) · `quartiers.js` (quartiers par ville) · `public/` · `seed/` · `tests/`
+
+## Identité visuelle « Congo fier » (branche `redesign`)
+
+- **Palette** (contrastes WCAG AA vérifiés) : Forêt `#0B5D3B` (principale, texte blanc 7,9:1), Forêt nuit `#08462C`, Vert drapeau `#009543` (décor), Soleil `#FBDE4A` (accent, texte encre 12,5:1), Soleil foncé `#F2C230`, Braise `#C81E1A` (boutons « Déposer », texte blanc 5,7:1), Braise foncé `#A51814`, Rouge drapeau `#DC241F` (décor), Encre `#14201A`, Gris `#5A655E` (5,7:1 sur Papier), Papier `#FBF7EE`, Sable `#F3ECDD`, Trait `#E2D9C6`, bord des champs `#857D6B` (3:1+).
+- **Polices** auto-hébergées dans `public/fonts/` (SIL Open Font License 1.1, licences jointes), sous-ensemble latin en WOFF2 : Bricolage Grotesque 800 (titres), Atkinson Hyperlegible Next 400/700 (texte). Total ≈ 41 Ko.
+- **Logo** : SVG écrits à la main dans `brand.js` (variante A « Anneau-bande » appliquée). `node scripts/brand-assets.js` régénère `public/brand/` (logo, logo-white, logo-mark, favicon, app-icon, og-image) ; les PNG (favicon 32 px, apple-touch-icon 180 px, icônes 192/512 px, og-image 1200×630) sont rendus depuis ces SVG. Variantes proposées : `design/logo-options.png` et `design/logo-option-{A,B,C}*.svg`.
+- **Motif** : bande diagonale vert / jaune / rouge (`.stripe`, titres de section, bandeau d'accueil, pied de page).
+- La page d'accès `/acces` laisse passer `/static/fonts/*` et `/static/brand/*` (fichiers publics, sans données).

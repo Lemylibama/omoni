@@ -1,14 +1,16 @@
 // Accès restreint au site entier pendant la phase d'essai : actif si SITE_PASSWORD est défini.
 // - Page « /acces » (mot de passe -> cookie signé httpOnly, 30 jours) ou, à défaut, HTTP Basic Auth (n'importe quel identifiant).
-// - Exemptés : /healthz (sonde Render) et la feuille de style utilisée par la page d'accès.
+// - Exemptés : /healthz (sonde Render) et ce qu'affiche la page d'accès : feuille de style, polices, logos et icônes (aucune donnée).
 // - Comparaison en temps constant ; limite de tentatives échouées : 10 / 15 min par IP et 200 / 15 min au total.
 const crypto = require('crypto');
 const auth = require('./auth');
+const brand = require('./brand');
 
 const PASSWORD = process.env.SITE_PASSWORD || '';
 const COOKIE = 'gate';
 const WINDOW = 15 * 60000, PER_IP = 10, GLOBAL = 200;
-const EXEMPT = new Set(['/healthz', '/static/style.css', '/acces']);
+const EXEMPT = new Set(['/healthz', '/static/style.css', '/acces', '/favicon.ico', '/static/manifest.webmanifest']);
+const EXEMPT_DIRS = /^\/static\/(fonts|brand)\/[\w-]+(\.[\w-]+)+$/; // polices et fichiers de marque publics
 const digest = (v) => crypto.createHash('sha256').update(String(v)).digest();
 const passOk = (v) => crypto.timingSafeEqual(digest(v), digest(PASSWORD)); // longueur fixe : pas de fuite de longueur
 // Le cookie dépend du mot de passe : en changer invalide tous les accès donnés.
@@ -23,18 +25,16 @@ const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&
 
 function gatePage(next, error) {
   return `<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="robots" content="noindex,nofollow"><title>Accès réservé — OMONI</title><link rel="stylesheet" href="/static/style.css?v=5">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛒</text></svg>"></head>
-<body><main class="wrap" style="max-width:420px;padding-top:48px">
-<div style="text-align:center;margin-bottom:20px"><span class="logo-o" style="display:inline-grid;place-items:center;width:56px;height:56px;border-radius:14px;background:#0a7d3e;color:#fff;font:800 32px system-ui">O</span>
-<h1 style="margin:12px 0 4px">OMONI</h1><p class="muted">Version d'essai — accès réservé</p></div>
-${error ? `<div class="notice bad">${esc(error)}</div>` : ''}
-<form method="post" action="/acces" class="pform" style="background:#fff;padding:18px;border-radius:14px;border:1px solid #e5e7eb">
+<meta name="robots" content="noindex,nofollow"><title>Accès réservé — OMONI</title>${brand.HEAD}<link rel="stylesheet" href="/static/style.css?v=6"></head>
+<body><div class="stripe" aria-hidden="true"></div><main class="wrap gate">
+<div class="gate-head"><h1>${brand.wordmarkA('gate-o')}</h1><p class="muted">Version d'essai — accès réservé</p></div>
+${error ? `<div class="notice bad" role="alert">${esc(error)}</div>` : ''}
+<form method="post" action="/acces" class="pform">
 <input type="hidden" name="next" value="${esc(next)}">
-<label for="pw"><b>Mot de passe du site</b></label>
-<input id="pw" type="password" name="password" autocomplete="current-password" required autofocus style="width:100%;margin:8px 0 14px">
-<button class="btn" type="submit" style="width:100%">Entrer</button></form>
-<p class="muted" style="text-align:center;margin-top:16px;font-size:14px">Ce site est en phase de test. Demandez le mot de passe à l'équipe OMONI.</p>
+<label for="pw">Mot de passe du site</label>
+<input id="pw" type="password" name="password" autocomplete="current-password" required autofocus>
+<button class="btn big" type="submit">Entrer</button></form>
+<p class="muted" style="text-align:center;font-size:14px">Ce site est en phase de test. Demandez le mot de passe à l'équipe OMONI.</p>
 </main></body></html>`;
 }
 
@@ -51,7 +51,7 @@ module.exports = function gate(app, express) {
     res.redirect(303, next);
   });
   app.use((req, res, next) => {
-    if (EXEMPT.has(req.path)) return next();
+    if (EXEMPT.has(req.path) || (req.method === 'GET' && EXEMPT_DIRS.test(req.path))) return next();
     const c = cookieOf(req);
     if (c && c.length === token().length && crypto.timingSafeEqual(Buffer.from(c), Buffer.from(token()))) return next();
     const h = req.headers.authorization || '';

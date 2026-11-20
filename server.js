@@ -70,6 +70,10 @@ const photoUrl = (f) => (f ? `/uploads/${f}` : null);
 const favSet = (req) => new Set(req.user ? db.prepare('SELECT ad_id FROM favorites WHERE user_id = ?').all(req.user.id).map((r) => r.ad_id) : []);
 const csrfField = (req) => `<input type="hidden" name="_csrf" value="${req.csrfToken}">`;
 
+const brand = require('./brand');
+// Icônes, couleur de thème et police de titre préchargée (partagés avec la page d'accès /acces).
+const BRAND_HEAD = brand.HEAD;
+const DECOR = (svg) => svg.replace('role="img" aria-label="OMONI"><title>OMONI</title>', 'aria-hidden="true" focusable="false">'); // le lien porte déjà le nom
 function layout(req, { title, body, desc = C.TAGLINE, scripts = '' }) {
   const u = req.user;
   const unread = u ? db.unreadCount(u.id) : 0;
@@ -83,16 +87,19 @@ function layout(req, { title, body, desc = C.TAGLINE, scripts = '' }) {
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${esc(title ? title + ' · ' + C.BRAND : C.BRAND + ' — ' + C.TAGLINE)}</title>
 <meta name="description" content="${esc(desc)}">
-<meta name="theme-color" content="#0a7d46">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛒</text></svg>">
-<link rel="stylesheet" href="/static/style.css?v=5">
+${BRAND_HEAD}
+<meta property="og:title" content="${esc(title || C.BRAND)}"><meta property="og:description" content="${esc(desc)}"><meta property="og:type" content="website">
+${process.env.PUBLIC_URL ? `<meta property="og:image" content="${esc(process.env.PUBLIC_URL.replace(/\/$/, ''))}/static/brand/og-image.png">` : ''}<meta name="twitter:card" content="summary_large_image">
+<link rel="stylesheet" href="/static/style.css?v=6">
 </head><body>
+<a class="skip" href="#contenu">Aller au contenu</a>
 <header class="top"><div class="wrap top-in">
-  <a class="logo" href="/"><span class="logo-mark">${esc(C.BRAND[0])}</span>${esc(C.BRAND)}</a>
+  <a class="logo" href="/" aria-label="${esc(C.BRAND)} — accueil">${DECOR(brand.wordmarkA('hdr-o'))}</a>
   <div class="top-r">${acct}<a class="btn btn-post" href="/deposer">+ <span class="hide-xs">Déposer une annonce</span><span class="show-xs">Déposer</span></a></div>
-</div></header>
-<main class="wrap">${body}</main>
-<footer class="foot"><div class="wrap">
+</div><div class="stripe" aria-hidden="true"></div></header>
+<main class="wrap" id="contenu">${body}</main>
+<footer class="foot"><div class="stripe" aria-hidden="true"></div><div class="wrap">
+  <div class="foot-logo" aria-hidden="true">${DECOR(brand.wordmarkA('ftr-o', '#FFFFFF'))}</div>
   <p><strong>${esc(C.BRAND)}</strong> — ${esc(C.TAGLINE)} · République du Congo</p>
   <p class="muted">Conseils : rencontrez le vendeur dans un lieu public, vérifiez l'article avant de payer, ne versez jamais d'avance par Mobile Money à un inconnu.</p>
   <p class="muted">Version de démonstration — les annonces marquées « Exemple » sont fictives.</p>
@@ -158,6 +165,7 @@ function ownAd(req, res) {
 app.use((req, res, next) => { res.set({ 'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'strict-origin-when-cross-origin', 'X-Frame-Options': 'DENY' }); next(); });
 const GATED = require('./gate')(app, express); // /healthz + mot de passe du site (SITE_PASSWORD)
 app.use('/static', express.static(path.join(__dirname, 'public'), { maxAge: '7d' }));
+app.get('/favicon.ico', (req, res) => res.redirect(301, '/static/brand/favicon-32.png'));
 app.use('/uploads', express.static(UPLOAD_DIR, { maxAge: '30d', immutable: true }));
 app.use(express.urlencoded({ extended: false, limit: '50kb' }));
 app.use(auth.middleware);
